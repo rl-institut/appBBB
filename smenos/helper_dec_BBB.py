@@ -111,7 +111,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                             if obj.uid == ('bus', region.name, sec, ressource)],
                         out_max=[max(demand.val)],
                         eta=[eta_th[ressource]],
-                        opex_var=opex_var[ressource],
                         regions=[region])
                 elif ressource == 'dh':
                     # create heat load profile and write to sink object
@@ -162,7 +161,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                                 max(demand.val), eta_th_chp[ressource], 
                                 eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
-                        opex_var=opex_var[ressource],
                         regions=[region])
                 elif ressource == 'bhkw_gas':
                     # create bus(bedarfsbus)
@@ -198,7 +196,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                         out_max=hlsb.get_out_max_chp(
                                 max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
-                        opex_var=opex_var[ressource],
                         regions=[region])
                 else:
                     print('Folgender Bedarf wird nicht berücksichtigt:')
@@ -240,7 +237,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                             if obj.uid == ('bus', region.name, sec, ressource)],
                         out_max=[max(demand.val)],
                         eta=[eta_th[ressource]],
-                        opex_var=opex_var[ressource],
                         regions=[region])
                 elif ressource == 'dh':
                     # create heat load profile and write to sink object
@@ -277,7 +273,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                         out_max=hlsb.get_out_max_chp(
                                 max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
-                        opex_var=opex_var[ressource],
                         regions=[region])
                 elif ressource == 'bhkw_gas':
                     # create bus
@@ -307,7 +302,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                         out_max=hlsb.get_out_max_chp(
                                 max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
-                        opex_var=opex_var[ressource],
                         regions=[region])
                 else:
                     print('Folgender Bedarf wird nicht berücksichtigt:')
@@ -347,7 +341,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                             if obj.uid == ('bus', region.name, sec, ressource)],
                         out_max=[max(demand.val)],
                         eta=[eta_th[ressource]],
-                        opex_var=opex_var[ressource],
                         regions=[region])
                 elif ressource == 'bhkw_bio':
                     # create bus
@@ -376,7 +369,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                         out_max=hlsb.get_out_max_chp(
                                 max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
-                        opex_var=opex_var[ressource],
                         regions=[region])
                 elif ressource == 'bhkw_gas':
                     # create bus
@@ -405,7 +397,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                         out_max=hlsb.get_out_max_chp(
                                 max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
-                        opex_var=opex_var[ressource],
                         regions=[region])
                 elif ressource == 'dh':
                     # create heat load profile and write to sink object
@@ -430,5 +421,4 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     if obj.uid == "('bus', '"+region.name+"', 'dh')"],
             out_max=[max(demand.val)],
             eta=[eta_th['natural_gas']],
-            opex_var=opex_var['natural_gas'],
             regions=[region])

@@ -237,7 +237,6 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
                     out_max=get_out_max_chp(
                             cap, eta_th_chp[typ], eta_el_chp[typ]),
                     eta=[eta_el_chp[typ], eta_th_chp[typ]],
-                    input_costs=opex_var[typ],
                     co2_var=co2_emissions[typ],
                     regions=[region])
 
@@ -251,7 +250,6 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
                     in_max=[None],
                     out_max=[cap_2],
                     eta=[eta_el_chp[typ]],
-                    input_costs=opex_var[typ],
                     co2_var=co2_emissions[typ],
                     regions=[region])
 
@@ -274,7 +272,6 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
                 out_max=get_out_max_chp(
                         capacity, eta_th_chp[typ], eta_el_chp[typ]),
                 eta=[eta_el_chp[typ], eta_th_chp[typ]],
-                input_costs=opex_var[typ],
                 co2_var=co2_emissions[typ],
                 regions=[region])
 
@@ -299,7 +296,6 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
                 eta_el_cond=eta_chp_flex_el[typ],
                 sigma=sigma_chp[typ],	 # power to heat ratio in backpr. mode
                 beta=beta_chp[typ],		# power loss index
-                input_costs=opex_var[typ],
                 co2_var=co2_emissions[typ],
                 regions=[region])
 
@@ -319,7 +315,6 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
                 in_max=[None],
                 out_max=[capacity],
                 eta=[eta_elec[typ]],
-                input_costs=opex_var[typ],
                 co2_var=co2_emissions[typ],
                 regions=[region])
 
@@ -353,7 +348,6 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
                     in_max=[None],
                     out_max=[capacity],
                     eta=[eta_th[typ]],
-                    input_costs=opex_var[typ],
                     co2_var=co2_emissions[typ],
                     regions=[region])
 
@@ -377,7 +371,6 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
             eta_el_cond=eta_chp_flex_el['schwarzepumpe'],
             sigma=sigma_chp[typ],	 # power to heat ratio in backpr. mode
             beta=beta_chp[typ],		# power loss index
-            input_costs=opex_var[typ],
             co2_var=co2_emissions[typ],
             regions=[region])
 
@@ -398,7 +391,6 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
             eta_el_cond=eta_chp_flex_el['jaenschwalde'],  #TODO: softcode
             sigma=sigma_chp[typ],	 # power to heat ratio in backpr. mode
             beta=beta_chp[typ],		# power loss index
-            input_costs=opex_var[typ],
             co2_var=co2_emissions[typ]*0.08,  # 92% Abscheiderate  #TODO: softcode
             regions=[region])
 

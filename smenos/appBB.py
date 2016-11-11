@@ -25,13 +25,13 @@ import numpy as np
 from workalendar.europe import Germany
 
 # choose scenario
-scenario = 'gruene2030_bk0'
+scenario = 'ES2030'
 
 # Basic inputs
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
 logger.define_logging()
 year = 2010
-time_index = pd.date_range('1/1/{0}'.format(year), periods=8760, freq='H')
+time_index = pd.date_range('1/1/{0}'.format(year), periods=2, freq='H')
 time_index_demandlib = pd.date_range(
     '1/1/{0}'.format(year), periods=8760, freq='H')
 conn = db.connection()
@@ -152,20 +152,17 @@ typeofgen_global = ['natural_gas', 'natural_gas_cc', 'lignite',
 # Add biomass bus for Berlin and Brandenburg
 for typ in typeofgen_global:
     Bus(uid="('bus', 'BB', '"+typ+"')",
-        type=typ, price=0,
-        excess=False, balanced=False,
+        type=typ, shortage=True, shortage_costs=opex_var[typ],
         co2_var=co2_emissions[typ],
         regions=Regions.regions)
     Bus(uid="('bus', 'BE', '"+typ+"')",
-        type=typ, price=0,
-        excess=False, balanced=False,
+        type=typ, shortage=True, shortage_costs=opex_var[typ],
         co2_var=co2_emissions[typ],
         regions=Regions.regions)
 
 Bus(uid="('bus', 'BB', 'biomass')",
     type='biomass',
-    price=0,
-    balanced=False,
+    shortage=True, shortage_costs=opex_var['biomass'],
     sum_out_limit=max_biomass,
     co2_var=co2_emissions['biomass'],
     regions=region_bb,
@@ -173,8 +170,7 @@ Bus(uid="('bus', 'BB', 'biomass')",
 
 Bus(uid="('bus', 'BE', 'biomass')",
     type='biomass',
-    price=0,
-    balanced=False,
+    shortage=True, shortage_costs=opex_var['biomass'],
     co2_var=co2_emissions['biomass'],
     regions=[region_ber],
     excess=False)
