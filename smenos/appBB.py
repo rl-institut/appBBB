@@ -151,29 +151,54 @@ typeofgen_global = ['natural_gas', 'natural_gas_cc', 'lignite',
                     'oil', 'waste', 'hard_coal']
 # Add biomass bus for Berlin and Brandenburg
 for typ in typeofgen_global:
-    Bus(uid="('bus', 'BB', '"+typ+"')",
+    Bus1 = Bus(uid="('bus', 'source', '"+typ+"')",
         type=typ, shortage=True, shortage_costs=opex_var[typ],
+        regions=Regions.regions)
+    Bus2 = Bus(uid="('bus', 'BB', '"+typ+"')",
+        type=typ,
         co2_var=co2_emissions[typ],
         regions=Regions.regions)
-    Bus(uid="('bus', 'BE', '"+typ+"')",
-        type=typ, shortage=True, shortage_costs=opex_var[typ],
+    Bus3 = Bus(uid="('bus', 'BE', '"+typ+"')",
+        type=typ,
         co2_var=co2_emissions[typ],
         regions=Regions.regions)
+    transport.Simple(  
+                    uid='transport_ressource_' + typ,
+                    outputs=[Bus2], inputs=[Bus1],
+                    out_max=[1000000], in_max=[1000000],eta=[1.0])
+    transport.Simple(  
+                    uid='transport_ressource_BE' + typ,
+                    outputs=[Bus3], inputs=[Bus1],
+                    out_max=[1000000], in_max=[1000000],eta=[1.0])
+    
 
-Bus(uid="('bus', 'BB', 'biomass')",
+Bus_bio = Bus(uid="('bus', 'source', 'biomass')",
     type='biomass',
     shortage=True, shortage_costs=opex_var['biomass'],
+    co2_var=co2_emissions['biomass'],
+    regions=region_bb,
+    excess=False)
+BusBB_Bio = Bus(uid="('bus', 'BB', 'biomass')",
+    type='biomass',
     sum_out_limit=max_biomass,
     co2_var=co2_emissions['biomass'],
     regions=region_bb,
     excess=False)
 
-Bus(uid="('bus', 'BE', 'biomass')",
+BusBE_Bio = Bus(uid="('bus', 'BE', 'biomass')",
     type='biomass',
-    shortage=True, shortage_costs=opex_var['biomass'],
     co2_var=co2_emissions['biomass'],
     regions=[region_ber],
     excess=False)
+
+transport.Simple(  
+                uid='transport_ressource_biomass',
+                outputs=[BusBB_Bio], inputs=[Bus_bio],
+                out_max=[1000000], in_max=[1000000],eta=[1.0])
+transport.Simple(  
+                uid='transport_ressource_biomass_BE',
+                outputs=[BusBE_Bio], inputs=[Bus_bio],
+                out_max=[1000000], in_max=[1000000],eta=[1.0])
 print("('bus', 'BE', 'biomass')")
 
 ################# create transformers ######################
@@ -250,6 +275,7 @@ for region in Regions.regions:
             shortage=True,
             shortage_costs=opex_var['import_el'],
             regions=[region])
+        
 
 ## print all entities of every region
 #for entity in Regions.entities:
