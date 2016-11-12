@@ -31,7 +31,7 @@ scenario = 'ES2030'
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
 logger.define_logging()
 year = 2010
-time_index = pd.date_range('1/1/{0}'.format(year), periods=2, freq='H')
+time_index = pd.date_range('1/1/{0}'.format(year), periods=8760, freq='H')
 time_index_demandlib = pd.date_range(
     '1/1/{0}'.format(year), periods=8760, freq='H')
 conn = db.connection()
