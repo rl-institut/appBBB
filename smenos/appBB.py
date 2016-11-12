@@ -153,15 +153,15 @@ typeofgen_global = ['natural_gas', 'natural_gas_cc', 'lignite',
 for typ in typeofgen_global:
     Bus1 = Bus(uid="('bus', 'source', '"+typ+"')",
         type=typ, shortage=True, shortage_costs=opex_var[typ],
-        regions=Regions.regions)
+        excess=False, regions=Regions.regions)
     Bus2 = Bus(uid="('bus', 'BB', '"+typ+"')",
         type=typ,
         co2_var=co2_emissions[typ],
-        regions=Regions.regions)
+        excess=False, regions=Regions.regions)
     Bus3 = Bus(uid="('bus', 'BE', '"+typ+"')",
         type=typ,
         co2_var=co2_emissions[typ],
-        regions=Regions.regions)
+        excess=False, regions=Regions.regions)
     transport.Simple(  
                     uid='transport_ressource_' + typ,
                     outputs=[Bus2], inputs=[Bus1],

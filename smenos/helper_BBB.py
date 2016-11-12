@@ -425,11 +425,15 @@ def add_constraint_export_minimum(om, Export_Regions, constraints):
     tmp_entities = [obj for obj in om.energysystem.entities
         if 'transport' in obj.uid]
     # returns all transport entities with transport to region in Export_Regions
-    exports = [obj for obj in tmp_entities
+    exports_1 = [obj for obj in tmp_entities
         if any(region in obj.outputs[0].uid for region in Export_Regions)]
+    exports = [obj for obj in exports_1
+        if 'elec' in obj.outputs[0].uid]
     # returns all transport entities that import from Berlin
-    imports = [obj for obj in tmp_entities
+    imports_1 = [obj for obj in tmp_entities
         if 'BE' in obj.inputs[0].uid]
+    imports = [obj for obj in imports_1
+        if 'elec' in obj.inputs[0].uid]
     # write list to hand over to constraint
     transports_ex = []
     for export in exports:
@@ -451,8 +455,10 @@ def add_constraint_import_berlin(om, constraints):
     tmp_entities = [obj for obj in om.energysystem.entities
         if 'transport' in obj.uid]
     # returns all transport entities that import from BB to Berlin
-    imports = [obj for obj in tmp_entities
+    imports_1 = [obj for obj in tmp_entities
         if 'BE' in obj.outputs[0].uid]
+    imports = [obj for obj in imports_1
+        if 'elec' in obj.outputs[0].uid]
     # write list to hand over to constraint
     transports_im = []
     for imp in imports:
