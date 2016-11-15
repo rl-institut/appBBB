@@ -419,6 +419,21 @@ def get_constraint_values(conn_oedb, scenario_name):
         columns=['constr', 'val'])
 
     return(read_parameter)
+    
+
+def get_emob_values(conn_oedb, scenario_name):
+    'values for constraints in scenario'
+
+    sql = """
+        SELECT region, energy
+        FROM model_draft.abbb_emob AS d
+        WHERE scenario = '""" + str(scenario_name) + """'"""
+    read_parameter = pd.DataFrame(
+        conn_oedb.execute(sql).fetchall(),
+        columns=['region', 'energy'])
+
+    return(read_parameter)
+
 
 def add_constraint_export_minimum(om, Export_Regions, constraints):
     # returns all transport entities

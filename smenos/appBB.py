@@ -42,14 +42,16 @@ conn_oedb = db.connection(section='open_edb')
 cap_initial = 0.0
 chp_faktor_flex = 0.84  # share of flexible generation of CHP
 max_biomass = 16111111  # 58 PJ per year
-energy_emob_BB = 2183000  # 7,86 PJ per year (10% of whole traffic)
-energy_emob_BE = 1298333
 share_emob = {}
 share_emob['PO'] = 0.16
 share_emob['UB'] = 0.12
 share_emob['HF'] = 0.29
 share_emob['OS'] = 0.17
 share_emob['LS'] = 0.25
+
+emob_energy = hlsb.get_emob_values(conn_oedb, scenario)
+energy_emob_BB = float(emob_energy.query('region=="BB"')['energy'])
+energy_emob_BE = float(emob_energy.query('region=="BE"')['energy'])
 
 # parameters
 (co2_emissions, co2_fix, eta_elec, eta_th, eta_th_chp, eta_el_chp,
