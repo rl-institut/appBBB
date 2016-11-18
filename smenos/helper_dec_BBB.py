@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import os
 
-#from oemof.db import coastdat
+from oemof.db import coastdat
 from oemof.core.network.entities import Bus
 from oemof.core.network.entities.components import sinks as sink
 from oemof.core.network.entities.components import transformers as transformer
@@ -47,17 +47,17 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
         # get regional heat demand for different ressources
         regID = region.name
         demand_sectors = demands_df.query('region==@regID')
-        ## get temperature of region as np array [°C]
-        #multiWeather = coastdat.get_weather(conn, region.geom, year)
-        #temp = np.zeros([len(multiWeather[0].data.index), ])
-        #for weather in multiWeather:
-            #temp += weather.data['temp_air'].as_matrix()
-        #temp = pd.Series(temp / len(multiWeather) - 273.15)
-        #region.temp = temp
-        filename = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                        'temp'))
-        temp = pd.read_pickle(filename)
+        # get temperature of region as np array [°C]
+        multiWeather = coastdat.get_weather(conn, region.geom, year)
+        temp = np.zeros([len(multiWeather[0].data.index), ])
+        for weather in multiWeather:
+            temp += weather.data['temp_air'].as_matrix()
+        temp = pd.Series(temp / len(multiWeather) - 273.15)
         region.temp = temp
+#        filename = os.path.abspath(os.path.join(os.path.dirname(__file__),
+#                                        'temp'))
+#        temp = pd.read_pickle(filename)
+#        region.temp = temp
         # create empty dataframe for district heating demand
         dh_demand = pd.Series(0, index=time_index)
         # residential sector
