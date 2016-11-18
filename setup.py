@@ -10,6 +10,8 @@ setup(name='appBBB',
       package_dir={'appBBB': 'appBBB'},
       install_requires=['oemof == 0.0.9',
                         'feedinlib == 0.0.10',
-                        'oemof.db'],
+                        'oemof.db',
+                        'demandlib == 0.1.1',
+                        'workalendar'],
       dependency_links = ['http://github.com/oemof/oemof.db/tarball/master'] 
       )
