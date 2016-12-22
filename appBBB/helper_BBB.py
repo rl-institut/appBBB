@@ -23,7 +23,7 @@ def get_parameters(conn_oedb):
              eta_th_chp, eta_chp_flex_el, sigma_chp, beta_chp,
              opex_var, opex_fix, capex, c_rate_in, c_rate_out,
              eta_in, eta_out, cap_loss, lifetime, wacc
-        FROM model_draft.abbb_simulation_parameter AS d
+        FROM scenario.abbb_simulation_parameter AS d
         """
     read_parameter = pd.DataFrame(
         conn_oedb.execute(sql).fetchall(),
@@ -113,7 +113,7 @@ def get_transmission(conn_oedb, scenario_name):
 
     sql = """
         SELECT from_region, to_region, capacity
-        FROM model_draft.abbb_transmission_capacity AS d
+        FROM scenario.abbb_transmission_capacity AS d
         WHERE scenario = '""" + str(scenario_name) + """'"""
     read_parameter = pd.DataFrame(
         conn_oedb.execute(sql).fetchall(),
@@ -129,7 +129,7 @@ def get_demand(conn_oedb, scenario_name):
 
     sql = """
         SELECT region, sector, type, demand
-        FROM model_draft.abbb_demand AS d
+        FROM scenario.abbb_demand AS d
         WHERE scenario = '""" + str(scenario_name) + """'"""
     read_parameter = pd.DataFrame(
         conn_oedb.execute(sql).fetchall(),
@@ -143,7 +143,7 @@ def get_transformer(conn_oedb, scenario_name):
 
     sql = """
         SELECT region, ressource, transformer, power
-        FROM model_draft.abbb_transformer AS d
+        FROM scenario.abbb_transformer AS d
         WHERE scenario = '""" + str(scenario_name) + """'"""
     read_parameter = pd.DataFrame(
         conn_oedb.execute(sql).fetchall(),
@@ -440,7 +440,7 @@ def get_constraint_values(conn_oedb, scenario_name):
 
     sql = """
         SELECT constr, val
-        FROM model_draft.abbb_constraints AS d
+        FROM scenario.abbb_constraints AS d
         WHERE scenario = '""" + str(scenario_name) + """'"""
     read_parameter = pd.DataFrame(
         conn_oedb.execute(sql).fetchall(),
@@ -454,7 +454,7 @@ def get_emob_values(conn_oedb, scenario_name):
 
     sql = """
         SELECT region, energy
-        FROM model_draft.abbb_emob AS d
+        FROM scenario.abbb_emob AS d
         WHERE scenario = '""" + str(scenario_name) + """'"""
     read_parameter = pd.DataFrame(
         conn_oedb.execute(sql).fetchall(),
