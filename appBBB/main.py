@@ -1,10 +1,9 @@
-#!/usr/bin/python3
-# -*- coding: utf-8
-
 import pandas as pd
+import numpy as np
 import warnings
 import logging
 import os
+from workalendar.europe import Germany
 
 from oemof import db
 from oemof.tools import logger
@@ -19,106 +18,140 @@ from oemof.solph.optimization_model import OptimizationModel
 
 import helper_BBB as hlsb
 import helper_dec_BBB as hlsd
-import numpy as np
-from workalendar.europe import Germany
 
-# choose scenario
-scenario = 'ES2030'
 
-# Basic inputs
+################################# CHOOSE SCENARIO ############################                                                         
+scenario = 'ES2030' #TODO Welche anderen Szenarien können gewählt werden?
+##############################################################################
+
+################################# BASIC SETTINGS #############################
+# set logging
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
 logger.define_logging()
+
+# establish database connections
+conn = db.connection() #TODO perspektivisch entfernen
+conn_oedb = db.connection(section='open_edb')
+
+# set solver
+solver = 'cbc'
+##############################################################################
+
+################################# GET/SET DATA ###############################
+# create time indexes
 year = 2010
 time_index = pd.date_range('1/1/{0}'.format(year), periods=2, freq='H')
 time_index_demandlib = pd.date_range(
     '1/1/{0}'.format(year), periods=8760, freq='H')
-conn = db.connection()
-conn_oedb = db.connection(section='open_edb')
+# get German holidays
+cal = Germany()
+holidays = dict(cal.holidays(year))
 
-########### get data ###########################################
+# set regions to be considered along with their nuts ID and abbreviation
+regionsBBB = pd.DataFrame(
+    [{'abbr': 'PO', 'nutsID': ['DE40F', 'DE40D', 'DE40A']},
+     {'abbr': 'UB', 'nutsID': ['DE40I', 'DE405']},
+     {'abbr': 'HF', 'nutsID': [
+            'DE408', 'DE40E', 'DE40H', 'DE401', 'DE404']},
+     {'abbr': 'OS', 'nutsID': ['DE409', 'DE40C', 'DE403']},
+     {'abbr': 'LS', 'nutsID': [
+            'DE406', 'DE407', 'DE40B', 'DE40G', 'DE402']},
+     {'abbr': 'BE', 'nutsID': 'DE3'}],
+    index=['Prignitz-Oberhavel', 'Uckermark-Barnim', u'Havelland-Fläming',
+           'Oderland-Spree', 'Lausitz-Spreewald', 'Berlin'])
+           
+# set maximum biomass availability for Brandenburg
+maximum_biomass_availability = 16111111  # 58 PJ/a
 
-cap_initial = 0.0
-chp_faktor_flex = 0.84  # share of flexible generation of CHP
-max_biomass = 16111111  # 58 PJ per year
+# get electricity demand for electromobility for Brandenburg and Berlin 
+# from database
+emob_energy = hlsb.get_emob_values(conn_oedb, scenario)
+energy_emob_BB = float(emob_energy.query('region=="BB"')['energy'])
+energy_emob_BE = float(emob_energy.query('region=="BE"')['energy'])
+# set shares of electromobility
 share_emob = {}
 share_emob['PO'] = 0.16
 share_emob['UB'] = 0.12
 share_emob['HF'] = 0.29
 share_emob['OS'] = 0.17
 share_emob['LS'] = 0.25
-
-emob_energy = hlsb.get_emob_values(conn_oedb, scenario)
-energy_emob_BB = float(emob_energy.query('region=="BB"')['energy'])
-energy_emob_BE = float(emob_energy.query('region=="BE"')['energy'])
-
-# parameters
+# get electromobility timeseries from data directory
+emob_data = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                         'data', 'data_mob_bev.csv'))
+emob_DE = pd.read_csv(emob_data, delimiter=',')
+                                       
+# get powerplant parameters from database
 (co2_emissions, co2_fix, eta_elec, eta_th, eta_th_chp, eta_el_chp,
  eta_chp_flex_el, sigma_chp, beta_chp, opex_var, opex_fix, capex,
  c_rate_in, c_rate_out, eta_in, eta_out,
  cap_loss, lifetime, wacc) = hlsb.get_parameters(conn_oedb)
 
+# get transmission capacities from database
 transmission = hlsb.get_transmission(conn_oedb, scenario)
+
+# get demand timeseries from database
 demands_df = hlsb.get_demand(conn_oedb, scenario)
+
+# get powerplant capacities of Berlin and Brandenburg
 transformer = hlsb.get_transformer(conn_oedb, scenario)
-# st = hlsb.get_st_timeline(conn, year)  # timeline for solar heat
-cal = Germany()
-holidays = dict(cal.holidays(2010))
-    
-emob_data = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                        'data', 'data_mob_bev.csv'))
-                                        
-############## Create a simulation object ########################
+
+# get parameters for industrial load profiles
+am, pm, profile_factors = hlsb.ind_profile_parameters()
+##############################################################################
+
+######################### INITIALISE OEMOF ENERGY SYSTEM #####################                                   
+# create oemof simulation object
 simulation = es.Simulation(
-    timesteps=list(range(len(time_index))), verbose=True, solver='cbc',
+    timesteps=list(range(len(time_index))), verbose=True, solver=solver,
     stream_solver_output=True,
     objective_options={'function': predefined_objectives.minimize_cost})
 
-############## Create an energy system ###########################
+# create oemof energy system object
 Regions = es.EnergySystem(time_idx=time_index, simulation=simulation)
-
-regionsBBB = pd.DataFrame(
-    [{'abbr': 'PO', 'nutsID': ['DE40F', 'DE40D', 'DE40A']},
-        {'abbr': 'UB', 'nutsID': ['DE40I', 'DE405']},
-        {'abbr': 'HF', 'nutsID': [
-            'DE408', 'DE40E', 'DE40H', 'DE401', 'DE404']},
-        {'abbr': 'OS', 'nutsID': ['DE409', 'DE40C', 'DE403']},
-        {'abbr': 'LS', 'nutsID': [
-            'DE406', 'DE407', 'DE40B', 'DE40G', 'DE402']},
-        {'abbr': 'BE', 'nutsID': 'DE3'}],
-    index=['Prignitz-Oberhavel', 'Uckermark-Barnim', u'Havelland-Fläming',
-           'Oderland-Spree', 'Lausitz-Spreewald', 'Berlin'])
-
+          
+# append regions to EnergySystem object
 for index, row in regionsBBB.iterrows():
+    #TODO hole shapes aus oedb
     Regions.regions.append(es.Region(
         geom=tools.get_polygon_from_nuts(conn, row['nutsID']),
-        name=row['abbr']))
-
+                                         name=row['abbr']))
+# create lists with Region objects of all regions in Berlin and Brandenburg
+region_ber = []
 region_bb = []
 for region in Regions.regions:
     if region.name == 'BE':
-        region_ber = region
+        region_ber.append(region)
     else:
-        region_bb.append(region)  # list
+        region_bb.append(region)
+##############################################################################
 
-emob_DE = pd.read_csv(emob_data, delimiter=',')
-emob_BB = emob_DE['sink_fixed'] * energy_emob_BB / emob_DE['sink_fixed'].sum()
-emob_BE = emob_DE['sink_fixed'] * energy_emob_BE / emob_DE['sink_fixed'].sum()
-
+##############################################################################
 # Add electricity sink and bus for each region
 for region in Regions.regions:
     # create electricity bus
-    Bus(uid="('bus', '"+region.name+"', 'elec')", type='elec', price=0,
-        regions=[region], excess=True, shortage=True, shortage_costs=1000000.0)
+    Bus(uid="('bus', '" + region.name + "', 'elec')",
+        type='elec',
+        regions=[region],
+        excess=True,
+        shortage=True,
+        shortage_costs=1000000.0) # randomly high shortage costs to avoid
+                                  # shortage
 
-    # create districtheat bus
-    Bus(uid="('bus', '"+region.name+"', 'dh')", type='dh', price=0,
-        regions=[region], excess=True)
+    # create district heating bus
+    Bus(uid="('bus', '"+region.name+"', 'dh')",
+        type='dh',
+        regions=[region],
+        excess=True)
+
+
 
     # create electricity sink
     demand = sink.Simple(uid=('demand', region.name, 'elec'),
                          inputs=[obj for obj in region.entities if obj.uid ==
                                  "('bus', '"+region.name+"', 'elec')"],
                          regions=[region])
+    # get electricity demands for the sectors residential, commercial and
+    # industrial              
     el_demands = {}
     el_demands['h0'] = float(demands_df.query(
         'region==@region.name and sector=="HH" and type=="electricity"')[
@@ -129,22 +162,29 @@ for region in Regions.regions:
     el_demands['i0'] = float(demands_df.query(
         'region==@region.name and sector=="IND" and type=="electricity"')[
         'demand'])
-    am, pm, profile_factors = hlsb.ind_profile_parameters()
+    # generate load profiles for all three sectors and write aggregated
+    # timeseries to sink object    
     hlsb.el_load_profiles(demand, el_demands, year, holidays=holidays,
-                         am=am, pm=pm, profile_factors=profile_factors)
+                          am=am, pm=pm, profile_factors=profile_factors)
+                          
+    # create electromobility sink                  
     if region.name != 'BE':
-        demand = sink.Simple(uid=('demand', region.name, 'elec', 'mob'),
-                         inputs=[obj for obj in region.entities if obj.uid ==
-                                 "('bus', '"+region.name+"', 'elec')"],
-                         regions=[region])
-        emob = emob_BB * share_emob[region.name]
-        demand.val = emob
+        demand = sink.Simple(
+                    uid=('demand', region.name, 'elec', 'mob'),
+                    inputs=[obj for obj in region.entities if obj.uid ==
+                        "('bus', '"+region.name+"', 'elec')"],
+                    regions=[region])
+        demand.val = ((emob_DE['sink_fixed'] * energy_emob_BB /
+                         emob_DE['sink_fixed'].sum()) *
+                       share_emob[region.name])
     else:
-        demand = sink.Simple(uid=('demand', region.name, 'elec', 'mob'),
+        demand = sink.Simple(
+                    uid=('demand', region.name, 'elec', 'mob'),
                          inputs=[obj for obj in region.entities if obj.uid ==
                                  "('bus', '"+region.name+"', 'elec')"],
                          regions=[region])
-        demand.val = emob_BE
+        demand.val = (emob_DE['sink_fixed'] * energy_emob_BE /
+                         emob_DE['sink_fixed'].sum())
 
 # Add global buses for BB and BE
 typeofgen_global = ['natural_gas', 'natural_gas_cc', 'lignite',
@@ -180,7 +220,7 @@ Bus_bio = Bus(uid="('bus', 'source', 'biomass')",
     excess=False)
 BusBB_Bio = Bus(uid="('bus', 'BB', 'biomass')",
     type='biomass',
-    sum_out_limit=max_biomass,
+    sum_out_limit=maximum_biomass_availability,
     co2_var=co2_emissions['biomass'],
     regions=region_bb,
     excess=False)
@@ -188,9 +228,11 @@ BusBB_Bio = Bus(uid="('bus', 'BB', 'biomass')",
 BusBE_Bio = Bus(uid="('bus', 'BE', 'biomass')",
     type='biomass',
     co2_var=co2_emissions['biomass'],
-    regions=[region_ber],
+    regions=region_ber,
     excess=False)
-
+##############################################################################
+    
+##############################################################################    
 transport.Simple(  
                 uid='transport_ressource_biomass',
                 outputs=[BusBB_Bio], inputs=[Bus_bio],
@@ -223,8 +265,6 @@ for region in Regions.regions:
                 ########### central #####################
     hlsb.create_transformer(
         Regions, region, transformer, conn=conn_oedb,
-        cap_initial=cap_initial,
-        chp_faktor_flex=chp_faktor_flex,  # share of flexible generation of CHP
         typeofgen=typeofgen_global)
 
     #TODO Problem mit Erdwärme??!!
@@ -233,8 +273,6 @@ for region in Regions.regions:
                 os.path.dirname(__file__), 'data', 
                   'res_timeseries_' + region.name + '.csv'))
     feedin_df = pd.read_csv(filename, delimiter=',', index_col=0)
-#    feedin_df, cap = feedin_pg.Feedin().aggregate_cap_val(
-#        conn, region=region, year=year, bustype='elec', **site)
     ee_capacities = {}
     ee_capacities['pv_pwr'] = float(transformer.query(
         'region==@region.name and ressource=="pv"')['power'])
