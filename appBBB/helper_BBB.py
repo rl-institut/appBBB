@@ -696,7 +696,6 @@ def add_constraint_entities_BE(om):
         }
     BE_entities = []
     for key in list(transformer_uids.keys()):
-        print(key)
         BE_entities += [obj for obj in om.energysystem.entities
             if obj.uid == key]
     # write list to hand over to constraint

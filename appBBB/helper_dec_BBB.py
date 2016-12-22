@@ -195,11 +195,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                                 max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
                         regions=[region])
-                else:
-                    print('Folgender Bedarf wird nicht berücksichtigt:')
-                    print(region.name)
-                    print(sec)
-                    print(ressource)
         # commercial sector
         sec = 'GHD'
         region.wind_class = heat_params.ix[global_bus]['wind_class']
@@ -301,11 +296,6 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                                 max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
                         regions=[region])
-                else:
-                    print('Folgender Bedarf wird nicht berücksichtigt:')
-                    print(region.name)
-                    print(sec)
-                    print(ressource)
         # industrial sector
         sec = 'IND'
         for ressource in list(demand_sectors.query("sector==@sec")['type']):

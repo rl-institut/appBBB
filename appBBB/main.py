@@ -199,7 +199,6 @@ transport.Simple(
                 uid='transport_ressource_biomass_BE',
                 outputs=[BusBE_Bio], inputs=[Bus_bio],
                 out_max=[1000000], in_max=[1000000],eta=[1.0])
-print("('bus', 'BE', 'biomass')")
 
 ################# create transformers ######################
                 ########### decentral #####################
@@ -276,16 +275,6 @@ for region in Regions.regions:
             shortage_costs=opex_var['import_el'],
             regions=[region])
         
-
-## print all entities of every region
-#for entity in Regions.entities:
-#    print(entity.uid)
-#    if entity.uid[0] == 'transformer' or entity.uid[0] == 'FixedSrc':
-#        print('out_max')
-#        print(entity.out_max)
-#        print('type(out_max)')
-#        print(type(entity.out_max))
-
 # Connect the electrical buses of federal states
 
 for con in transmission['from']:  # Zeilen in transmission-Tabelle
@@ -340,7 +329,6 @@ for con in transmission['from']:  # Zeilen in transmission-Tabelle
 # change uid tuples to strings
 for entity in Regions.entities:
     entity.uid = str(entity.uid)
-    print(entity.uid)
 
 # Optimize the energy system
 om = OptimizationModel(energysystem=Regions)
