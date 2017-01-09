@@ -5,6 +5,7 @@ Created on Thu Sep  8 08:19:23 2016
 @author: Elisa.Gaudchau
 """
 
+import logging
 import pandas as pd
 import pyomo.environ as po
 from datetime import time as settime
@@ -12,6 +13,7 @@ from datetime import time as settime
 from oemof.core.network.entities.components import transformers as transformer
 import demandlib.bdew as bdew
 import demandlib.particular_profiles as profiles
+from shapely.wkt import loads as wkt_loads
 
 
 def get_parameters(conn_oedb):
@@ -138,6 +140,19 @@ def get_demand(conn_oedb, scenario_name):
     return(read_parameter)
 
 
+def get_polygon_from_nuts(conn, nuts):
+    """
+    Retrieve geometry from database.
+    """
+    logging.debug('Getting polygon from DB')
+    sql = '''
+        SELECT st_astext(ST_Transform(st_union(geom), 4326))
+        FROM political_boundary.bkg_vg250_6_gem
+        WHERE nuts in {0};
+    '''.format(tuple(nuts))
+    return wkt_loads(conn.execute(sql).fetchone()[0])
+    
+    
 def get_transformer(conn_oedb, scenario_name):
     'transformers in BBB regions'
 
