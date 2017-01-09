@@ -111,10 +111,8 @@ Regions = es.EnergySystem(time_idx=time_index, simulation=simulation)
           
 # append regions to EnergySystem object
 for index, row in regionsBBB.iterrows():
-    #TODO hole shapes aus oedb
     Regions.regions.append(es.Region(
-        geom=tools.get_polygon_from_nuts(conn, row['nutsID']),
-                                         name=row['abbr']))
+        geom=hlsb.get_polygon_from_nuts(conn_oedb, row['nutsID'])))
 # create lists with Region objects of all regions in Berlin and Brandenburg
 region_ber = []
 region_bb = []
