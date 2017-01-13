@@ -56,7 +56,7 @@ regionsBBB = pd.DataFrame(
      {'abbr': 'OS', 'nutsID': ['DE409', 'DE40C', 'DE403']},
      {'abbr': 'LS', 'nutsID': [
             'DE406', 'DE407', 'DE40B', 'DE40G', 'DE402']},
-     {'abbr': 'BE', 'nutsID': 'DE3'}],
+     {'abbr': 'BE', 'nutsID': 'DE300'}],
     index=['Prignitz-Oberhavel', 'Uckermark-Barnim', u'Havelland-Fläming',
            'Oderland-Spree', 'Lausitz-Spreewald', 'Berlin'])
            
@@ -112,7 +112,8 @@ Regions = es.EnergySystem(time_idx=time_index, simulation=simulation)
 # append regions to EnergySystem object
 for index, row in regionsBBB.iterrows():
     Regions.regions.append(es.Region(
-        geom=hlsb.get_polygon_from_nuts(conn_oedb, row['nutsID'])))
+        geom=hlsb.get_polygon_from_nuts(conn_oedb, row['nutsID']),
+        name=row['abbr']))
 # create lists with Region objects of all regions in Berlin and Brandenburg
 region_ber = []
 region_bb = []

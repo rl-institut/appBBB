@@ -145,11 +145,20 @@ def get_polygon_from_nuts(conn, nuts):
     Retrieve geometry from database.
     """
     logging.debug('Getting polygon from DB')
-    sql = '''
-        SELECT st_astext(ST_Transform(st_union(geom), 4326))
-        FROM political_boundary.bkg_vg250_6_gem
-        WHERE nuts in {0};
-    '''.format(tuple(nuts))
+    if type(nuts) is list or type(nuts) is tuple:
+        sql = '''
+            SELECT st_astext(ST_Transform(st_union(geom), 4326))
+            FROM political_boundary.bkg_vg250_6_gem
+            WHERE nuts in {0};
+        '''.format(tuple(nuts))
+    elif type(nuts) is str:
+        sql = '''
+            SELECT st_astext(ST_Transform(st_union(geom), 4326))
+            FROM political_boundary.bkg_vg250_6_gem
+            WHERE nuts = '{0}';
+        '''.format(nuts)
+    else:
+        logging.error('Nuts type not supported.')
     return wkt_loads(conn.execute(sql).fetchone()[0])
     
     
