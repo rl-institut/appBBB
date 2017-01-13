@@ -12,6 +12,7 @@ setup(name='appBBB',
                         'feedinlib == 0.0.10',
                         'oemof.db',
                         'demandlib == 0.1.1',
-                        'workalendar'],
+                        'workalendar',
+                        'shapely'],
       dependency_links = ['http://github.com/oemof/oemof.db/tarball/master'] 
       )
