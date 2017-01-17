@@ -38,7 +38,7 @@ solver = 'cbc'
 ################################# GET/SET DATA ###############################
 # create time indexes
 year = 2010
-time_index = pd.date_range('1/1/{0}'.format(year), periods=2, freq='H')
+time_index = pd.date_range('1/1/{0}'.format(year), periods=8760, freq='H')
 time_index_demandlib = pd.date_range(
     '1/1/{0}'.format(year), periods=8760, freq='H')
 # get German holidays
@@ -281,6 +281,7 @@ hlsd.create_decentral_entities(Regions, regionsBBB, demands_df, year,
 ##############################################################################
                               
 ######################### CREATE POWER PLANTS ################################
+logging.info('Creating power plant entities')
 # add biomass, powertoheat and bhkw_bio to list typeofgen_global to generate
 # powerplants from database in hlsb.create_transformer function
 typeofgen_global.append('biomass')
@@ -317,6 +318,7 @@ for region in Regions.regions:
 ##############################################################################
 
 ########################### REMOVE ORPHAN BUSES ##############################
+logging.info('Removing orphan buses')
 # get all buses
 buses = [obj for obj in Regions.entities if isinstance(obj, Bus)]
 for bus in buses:
@@ -329,6 +331,7 @@ for bus in buses:
 ##############################################################################
 
 ################ CREATE ELECTRICITY BUSES FOR IMPORT REGIONS #################
+logging.info('Creating electricity buses for import regions')
 # import-regions are regions where electricity can be imported from to 
 # Brandenburg (Mecklenburg-Vorpommern, Sachsen-Anhalt, Sachsen, Polen)
 Import_Regions = ('MV', 'ST', 'SN', 'KJ')
@@ -352,6 +355,7 @@ for region in Regions.regions:
 ##############################################################################
             
 ####################### CONNECT ELECTRICITY BUSES ############################
+logging.info('Connecting electricity buses')
 # iterate through transmission lines
 # entry is the number of the transmission line
 for entry in transmission['from']:
@@ -451,7 +455,7 @@ hlsb.add_constraint_co2_emissions(om, co2_emissions, constraints)
 hlsb.add_constraint_entities_BE(om)
 
 # write LP file
-om.write_lp_file()
+#om.write_lp_file()
 # solve problem
 om.solve()
 # save results to Regions instance
