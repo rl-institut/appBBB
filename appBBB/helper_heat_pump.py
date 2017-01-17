@@ -239,13 +239,13 @@ def create_hp_entities(region, year, demand, elec_bus, temp,
         # air heat pump warm water
             # bus
         if share_ww != 0:
-            bus_hp = Bus(uid=('bus', region.name, 'residential', 'heat_pump_dec',
-                          'air', 'ww'),
+            bus_hp = Bus(uid=('bus', region.name, 'residential', 
+                              'heat_pump_dec', 'air', 'ww'),
             type='heat_pump_dec', price=0, regions=[region], excess=False)
                 # sink
             demand = sink.Simple(
-                uid=('demand', region.name, 'residential', 'heat_pump_dec', 'air',
-                     'ww'),
+                uid=('demand', region.name, 'residential', 'heat_pump_dec', 
+                     'air', 'ww'),
                 inputs=[bus_hp],
                 region=region)
             demand.val = (profile_sfh_ww + profile_mfh_ww) * share_air_hp
@@ -287,8 +287,8 @@ def create_hp_entities(region, year, demand, elec_bus, temp,
             type='heat_pump_dec', price=0, regions=[region], excess=False)
             # sink
         demand = sink.Simple(
-            uid=('demand', region.name, 'residential', 'heat_pump_dec', 'brine',
-                 'heating'),
+            uid=('demand', region.name, 'residential', 'heat_pump_dec', 
+                 'brine', 'heating'),
             inputs=[bus_hp],
             region=region)
         demand.val = ((profile_sfh_heating + profile_mfh_heating) *
@@ -318,13 +318,13 @@ def create_hp_entities(region, year, demand, elec_bus, temp,
         # brine heat pump warm water
             # bus
         if share_ww != 0:
-            bus_hp = Bus(uid=('bus', region.name, 'residential', 'heat_pump_dec',
-                              'brine', 'ww'),
+            bus_hp = Bus(uid=('bus', region.name, 'residential', 
+                              'heat_pump_dec', 'brine', 'ww'),
                 type='heat_pump_dec', price=0, regions=[region], excess=False)
                 # demand
             demand = sink.Simple(
-                uid=('demand', region.name, 'residential', 'heat_pump_dec', 'brine',
-                     'ww'),
+                uid=('demand', region.name, 'residential', 'heat_pump_dec', 
+                     'brine', 'ww'),
                 inputs=[bus_hp],
                 region=region)
             demand.val = (profile_sfh_ww + profile_mfh_ww) * (1 - share_air_hp)

@@ -1,13 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Sep 15 13:46:12 2016
-
-@author: elisa
-"""
-
-
+import os
 import pandas as pd
 import numpy as np
+import pickle
 
 from oemof.db import coastdat
 from oemof.core.network.entities import Bus
@@ -18,14 +12,15 @@ import helper_heat_pump as hhp
 import helper_BBB as hlsb
 
 
-def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
+def create_decentral_entities(Regions, regionsBBB, demands_df, year,
                               time_index, eta_th, eta_in, eta_out, cap_loss,
                               opex_fix, opex_var, eta_th_chp, eta_el_chp,
                               holidays):
-
+                                  
+    # dictionary to assign commodity to heating system
     heating_system_commodity = {
         'hard_coal_dec': 'hard_coal',
-        'hard_coal_dec_ind': 'hard_coal', #  bedarf und Bus
+        'hard_coal_dec_ind': 'hard_coal',
         'lignite_dec': 'lignite',
         'lignite_dec_ind': 'lignite',
         'oil_dec': 'oil',
@@ -33,31 +28,41 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
         'other_dec': 'waste',
         'biomass_dec': 'biomass',
         'biomass_dec_ind': 'biomass'}
+    # get parameters for generation of heat load profiles 
     heat_params = hlsb.get_bdew_heatprofile_parameters()
+    # get heat pump parameters
     (share_sfh_hp, share_ww, share_air_hp,
         share_heating_rod, share_heat_storage) = hlsb.get_hp_parameters()
+    # get parameters for generation of industrial heat load profiles 
     am, pm, profile_factors = hlsb.ind_profile_parameters()
+    
     for region in Regions.regions:
         if region.name == 'BE':
             global_bus = 'BE'
         else:
             global_bus = 'BB'
+            
         # get regional heat demand for different ressources
         regID = region.name
         demand_sectors = demands_df.query('region==@regID')
+        
         # get temperature of region as np array [°C]
-        multiWeather = coastdat.get_weather(conn, region.geom, year)
-        temp = np.zeros([len(multiWeather[0].data.index), ])
-        for weather in multiWeather:
-            temp += weather.data['temp_air'].as_matrix()
-        temp = pd.Series(temp / len(multiWeather) - 273.15)
+        # used coastdat data cannot be provided, therefore only the used
+        # temperature timeseries is provided
+#        multiWeather = coastdat.get_weather(conn, region.geom, year)
+#        temp = np.zeros([len(multiWeather[0].data.index), ])
+#        for weather in multiWeather:
+#            temp += weather.data['temp_air'].as_matrix()
+#        temp = pd.Series(temp / len(multiWeather) - 273.15)
+#        pickle.dump(temp, open( "temp.pickle", "wb" ))
+        filename = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), 'temp.pickle'))
+        temp = pd.read_pickle(filename)
         region.temp = temp
-#        filename = os.path.abspath(os.path.join(os.path.dirname(__file__),
-#                                        'temp'))
-#        temp = pd.read_pickle(filename)
-#        region.temp = temp
+        
         # create empty dataframe for district heating demand
         dh_demand = pd.Series(0, index=time_index)
+        
         # residential sector
         sec = 'HH'
         region.share_efh = heat_params.ix[global_bus]['share_EFH']
@@ -79,13 +84,16 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                         holidays)
                 elif ressource in list(heating_system_commodity.keys()):
                     # create bus(bedarfsbus)
-                    Bus(uid=('bus', region.name, sec, ressource), type=ressource,
-                        price=0, regions=[region], excess=False)
+                    Bus(uid=('bus', region.name, sec, ressource),
+                        type=ressource,
+                        price=0, 
+                        regions=[region], 
+                        excess=False)
                     # create sink
-                    demand = sink.Simple(uid=('demand', region.name, sec,
-                        ressource),
-                        inputs=[obj for obj in Regions.entities
-                            if obj.uid == ('bus', region.name, sec, ressource)],
+                    demand = sink.Simple(
+                        uid=('demand', region.name, sec, ressource),
+                        inputs=[obj for obj in Regions.entities if
+                            obj.uid == ('bus', region.name, sec, ressource)],
                         region=region)
                     # create heat load profile and write to sink object
                     # heat load in [MWh/a]
@@ -106,7 +114,8 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                                 if obj.uid == "('bus', '"+global_bus+"', '"+\
                                 heating_system_commodity[ressource]+"')"],
                         outputs=[obj for obj in Regions.entities
-                            if obj.uid == ('bus', region.name, sec, ressource)],
+                            if obj.uid == (
+                                'bus', region.name, sec, ressource)],
                         out_max=[max(demand.val)],
                         eta=[eta_th[ressource]],
                         regions=[region])
@@ -126,13 +135,18 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     dh_demand += profile_efh + profile_mfh
                 elif ressource == 'bhkw_bio':
                     # create bus(bedarfsbus)
-                    Bus(uid="('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')", type=ressource,
-                        price=0, regions=[region], excess=False)
+                    Bus(uid=("('bus', '" + region.name + "', '" + sec +
+                            "', '" + ressource+"')"),
+                        type=ressource,
+                        price=0, 
+                        regions=[region], 
+                        excess=False)
                     # create sink
-                    demand = sink.Simple(uid=('demand', region.name, sec,
-                        ressource),
+                    demand = sink.Simple(
+                        uid=('demand', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                            if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"],
+                            if obj.uid == ("('bus', '" + region.name + "', '" +
+                            sec + "', '" + ressource + "')")],
                         region=region)
                     # create heat load profile and write to sink object
                     # heat load in [MWh/a]
@@ -150,11 +164,12 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     transformer.CHP(
                         uid=('transformer', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities if obj.uid == 
-                                "('bus', '"+global_bus+"', 'biomass')"],
+                                "('bus', '" + global_bus + "', 'biomass')"],
                         outputs=[[obj for obj in Regions.entities if obj.uid ==
-                                 "('bus', '"+region.name+"', 'elec')"][0], 
+                                 "('bus', '" + region.name + "', 'elec')"][0], 
                                 [obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"][0]],
+                                if obj.uid == ("('bus', '" + region.name + 
+                                "', '" + sec + "', '" + ressource + "')")][0]],
                         out_max=hlsb.get_out_max_chp(
                                 max(demand.val), eta_th_chp[ressource], 
                                 eta_el_chp[ressource]),
@@ -162,13 +177,18 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                         regions=[region])
                 elif ressource == 'bhkw_gas':
                     # create bus(bedarfsbus)
-                    Bus(uid="('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')", type=ressource,
-                        price=0, regions=[region], excess=False)
+                    Bus(uid=("('bus', '" + region.name + "', '" + sec + 
+                             "', '" + ressource+"')"),
+                        type=ressource,
+                        price=0, 
+                        regions=[region], 
+                        excess=False)
                     # create sink
-                    demand = sink.Simple(uid=('demand', region.name, sec,
-                        ressource),
+                    demand = sink.Simple(
+                        uid=('demand', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                            if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"],
+                            if obj.uid == ("('bus', '" + region.name + "', '" + 
+                            sec + "', '" + ressource + "')")],
                         region=region)
                     # create heat load profile and write to sink object
                     # heat load in [MWh/a]
@@ -186,15 +206,19 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     transformer.CHP(
                         uid=('transformer', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+global_bus+"', 'natural_gas')"],
+                                if obj.uid == ("('bus', '" + global_bus + 
+                                "', 'natural_gas')")],
                         outputs=[[obj for obj in Regions.entities if obj.uid ==
-                                 "('bus', '"+region.name+"', 'elec')"][0],
+                                 "('bus', '" + region.name + "', 'elec')"][0],
                                 [obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"][0]],
+                                if obj.uid == ("('bus', '" + region.name + 
+                                "', '" + sec + "', '" + ressource + "')")][0]],
                         out_max=hlsb.get_out_max_chp(
-                                max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
+                                max(demand.val), eta_th_chp[ressource], 
+                                eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
                         regions=[region])
+                        
         # commercial sector
         sec = 'GHD'
         region.wind_class = heat_params.ix[global_bus]['wind_class']
@@ -207,13 +231,18 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     pass                
                 if ressource in list(heating_system_commodity.keys()):
                     # create bus
-                    Bus(uid=('bus', region.name, sec, ressource), type=ressource,
-                        price=0, regions=[region], excess=False)
+                    Bus(
+                        uid=('bus', region.name, sec, ressource),
+                        type=ressource,
+                        price=0, 
+                        regions=[region], 
+                        excess=False)
                     # create sink
-                    demand = sink.Simple(uid=('demand', region.name, sec,
-                        ressource),
+                    demand = sink.Simple(
+                        uid=('demand', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                            if obj.uid == ('bus', region.name, sec, ressource)],
+                            if obj.uid == (
+                                'bus', region.name, sec, ressource)],
                         region=region)
                     # create heat load profile and write to sink object
                     # heat load in [MWh/a]
@@ -225,9 +254,12 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     transformer.Simple(
                         uid=('transformer', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+global_bus+"', '"+heating_system_commodity[ressource]+"')"],
+                                if obj.uid == ("('bus', '" + global_bus +
+                                "', '" + heating_system_commodity[ressource] +
+                                "')")],
                         outputs=[obj for obj in Regions.entities
-                            if obj.uid == ('bus', region.name, sec, ressource)],
+                            if obj.uid == (
+                                'bus', region.name, sec, ressource)],
                         out_max=[max(demand.val)],
                         eta=[eta_th[ressource]],
                         regions=[region])
@@ -240,13 +272,20 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                         shlp_type='GHD', ww_incl=True)
                 elif ressource == 'bhkw_bio':
                     # create bus
-                    Bus(uid="('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')", type=ressource,
-                        price=0, regions=[region], excess=False)
+                    Bus(
+                        uid=("('bus', '" + region.name + "', '" + sec +
+                        "', '" + ressource + "')"),
+                        type=ressource,
+                        price=0,
+                        regions=[region],
+                        excess=False)
                     # create sink
-                    demand = sink.Simple(uid=('demand', region.name, sec,
+                    demand = sink.Simple(
+                        uid=('demand', region.name, sec,
                         ressource),
                         inputs=[obj for obj in Regions.entities
-                            if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"],
+                            if obj.uid == ("('bus', '" + region.name + "', '" +
+                            sec + "', '" + ressource + "')")],
                         region=region)
                     # create heat load profile and write to sink object
                     # heat load in [MWh/a]
@@ -258,24 +297,34 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     transformer.CHP(
                         uid=('transformer', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+global_bus+"', 'biomass')"],
+                                if obj.uid == ("('bus', '" + global_bus + 
+                                    "', 'biomass')")],
                         outputs=[[obj for obj in Regions.entities if obj.uid ==
-                                 "('bus', '"+region.name+"', 'elec')"][0], 
+                                 "('bus', '" + region.name + "', 'elec')"][0], 
                                 [obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"][0]],
+                                if obj.uid == ("('bus', '" + region.name + 
+                                "', '" + sec + "', '" + ressource + "')")][0]],
                         out_max=hlsb.get_out_max_chp(
-                                max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
-                        eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
+                                max(demand.val), eta_th_chp[ressource],
+                                eta_el_chp[ressource]),
+                        eta=[eta_el_chp[ressource],
+                        eta_th_chp[ressource]],
                         regions=[region])
                 elif ressource == 'bhkw_gas':
                     # create bus
-                    Bus(uid="('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')", type=ressource,
-                        price=0, regions=[region], excess=False)
+                    Bus(
+                        uid="('bus', '" + region.name + "', '" + sec + 
+                            "', '" + ressource + "')",
+                        type=ressource,
+                        price=0, 
+                        regions=[region], 
+                        excess=False)
                     # create sink
-                    demand = sink.Simple(uid=('demand', region.name, sec,
-                        ressource),
+                    demand = sink.Simple(
+                        uid=('demand', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                            if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"],
+                            if obj.uid == ("('bus', '" + region.name + "', '" +
+                                sec + "', '" + ressource + "')")],
                         region=region)
                     # create heat load profile and write to sink object
                     # heat load in [MWh/a]
@@ -287,15 +336,20 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     transformer.CHP(
                         uid=('transformer', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+global_bus+"', 'natural_gas')"],
+                                if obj.uid == ("('bus', '" + global_bus +
+                                    "', 'natural_gas')")],
                         outputs=[[obj for obj in Regions.entities if obj.uid ==
-                                 "('bus', '"+region.name+"', 'elec')"][0], 
+                                 "('bus', '" + region.name + "', 'elec')"][0], 
                                 [obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"][0]],
+                                if obj.uid == ("('bus', '" + region.name +
+                                "', '" + sec + "', '" + ressource + "')")][0]],
                         out_max=hlsb.get_out_max_chp(
-                                max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
-                        eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
+                                max(demand.val), eta_th_chp[ressource], 
+                                eta_el_chp[ressource]),
+                        eta=[eta_el_chp[ressource], 
+                        eta_th_chp[ressource]],
                         regions=[region])
+                        
         # industrial sector
         sec = 'IND'
         for ressource in list(demand_sectors.query("sector==@sec")['type']):
@@ -306,13 +360,16 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     pass
                 if ressource in list(heating_system_commodity.keys()):
                     # create bus
-                    Bus(uid=('bus', region.name, sec, ressource), type=ressource,
-                        price=0, regions=[region], excess=False)
+                    Bus(uid=('bus', region.name, sec, ressource), 
+                        type=ressource,
+                        price=0, 
+                        regions=[region], 
+                        excess=False)
                     # create sink
-                    demand = sink.Simple(uid=('demand', region.name, sec,
-                        ressource),
-                        inputs=[obj for obj in Regions.entities
-                            if obj.uid == ('bus', region.name, sec, ressource)],
+                    demand = sink.Simple(
+                        uid=('demand', region.name, sec, ressource),
+                        inputs=[obj for obj in Regions.entities if
+                            obj.uid == ('bus', region.name, sec, ressource)],
                         region=region)
                     # create heat load profile and write to sink object
                     # heat load in [MWh/a]
@@ -323,22 +380,28 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     transformer.Simple(
                         uid=('transformer', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+global_bus+"', '"+\
-                                heating_system_commodity[ressource]+"')"],
-                        outputs=[obj for obj in Regions.entities
-                            if obj.uid == ('bus', region.name, sec, ressource)],
+                                if obj.uid == ("('bus', '" + global_bus +
+                                "', '" + heating_system_commodity[ressource] +
+                                "')")],
+                        outputs=[obj for obj in Regions.entities if
+                            obj.uid == ('bus', region.name, sec, ressource)],
                         out_max=[max(demand.val)],
                         eta=[eta_th[ressource]],
                         regions=[region])
                 elif ressource == 'bhkw_bio':
                     # create bus
-                    Bus(uid="('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')", type=ressource,
-                        price=0, regions=[region], excess=False)
+                    Bus(uid=("('bus', '" + region.name + "', '" + sec + 
+                            "', '" + ressource + "')"),
+                        type=ressource,
+                        price=0, 
+                        regions=[region], 
+                        excess=False)
                     # create sink
-                    demand = sink.Simple(uid=('demand', region.name, sec,
-                        ressource),
+                    demand = sink.Simple(
+                        uid=('demand', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                            if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"],
+                            if obj.uid == ("('bus', '" + region.name + "', '" +
+                                sec + "', '" + ressource + "')")],
                         region=region)
                     # create heat load profile and write to sink object
                     # heat load in [MWh/a]
@@ -349,24 +412,34 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     transformer.CHP(
                         uid=('transformer', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+global_bus+"', 'biomass')"],
+                                if obj.uid == ("('bus', '" + global_bus +
+                                    "', 'biomass')")],
                         outputs=[[obj for obj in Regions.entities if obj.uid ==
-                                 "('bus', '"+region.name+"', 'elec')"][0], 
+                                 "('bus', '" + region.name + "', 'elec')"][0], 
                                 [obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"][0]],
+                                if obj.uid == ("('bus', '" + region.name +
+                                    "', '" + sec + "', '" + ressource + 
+                                    "')")][0]],
                         out_max=hlsb.get_out_max_chp(
-                                max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
-                        eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
+                                max(demand.val), eta_th_chp[ressource], 
+                                eta_el_chp[ressource]),
+                        eta=[eta_el_chp[ressource], 
+                        eta_th_chp[ressource]],
                         regions=[region])
                 elif ressource == 'bhkw_gas':
                     # create bus
-                    Bus(uid="('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')", type=ressource,
-                        price=0, regions=[region], excess=False)
+                    Bus(uid=("('bus', '" + region.name + "', '" + sec + 
+                             "', '" + ressource + "')"),
+                        type=ressource,
+                        price=0, 
+                        regions=[region], 
+                        excess=False)
                     # create sink
-                    demand = sink.Simple(uid=('demand', region.name, sec,
-                        ressource),
+                    demand = sink.Simple(
+                        uid=('demand', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                            if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"],
+                            if obj.uid == ("('bus', '" + region.name + "', '" +
+                                sec + "', '" + ressource + "')")],
                         region=region)
                     # create heat load profile and write to sink object
                     # heat load in [MWh/a]
@@ -377,13 +450,16 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
                     transformer.CHP(
                         uid=('transformer', region.name, sec, ressource),
                         inputs=[obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+global_bus+"', 'natural_gas')"],
+                                if obj.uid == ("('bus', '" + global_bus +
+                                    "', 'natural_gas')")],
                         outputs=[[obj for obj in Regions.entities if obj.uid ==
                                  "('bus', '"+region.name+"', 'elec')"][0], 
                                 [obj for obj in Regions.entities
-                                if obj.uid == "('bus', '"+region.name+"', '"+sec+"', '"+ressource+"')"][0]],
+                                if obj.uid == ("('bus', '" + region.name +
+                                "', '" + sec + "', '" + ressource + "')")][0]],
                         out_max=hlsb.get_out_max_chp(
-                                max(demand.val), eta_th_chp[ressource], eta_el_chp[ressource]),
+                                max(demand.val), eta_th_chp[ressource], 
+                                eta_el_chp[ressource]),
                         eta=[eta_el_chp[ressource], eta_th_chp[ressource]],
                         regions=[region])
                 elif ressource == 'dh':

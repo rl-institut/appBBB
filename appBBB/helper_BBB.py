@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Sep  8 08:19:23 2016
-
-@author: Elisa.Gaudchau
-"""
-
 import logging
 import pandas as pd
 import pyomo.environ as po
@@ -17,7 +10,9 @@ from shapely.wkt import loads as wkt_loads
 
 
 def get_parameters(conn_oedb):
-    'returns emission and cost parameters'
+    """
+    Get emission and cost parameters for power plants and heating systems.
+    """
 
     sql = """
         SELECT technology, co2_var, co2_fix, eta_elec,
@@ -80,6 +75,9 @@ def get_parameters(conn_oedb):
 
 
 def get_res_parameters():
+    """
+    Set PV and wind power plant parameters.
+    """
     site = {'module_name': 'Yingli_YL210__2008__E__',
             'azimuth': 0,
             'tilt': 0,
@@ -111,7 +109,9 @@ def get_res_parameters():
     
     
 def get_transmission(conn_oedb, scenario_name):
-    'transmission capacities between BBB regions'
+    """
+    Get transmission capacities between BBB regions.
+    """
 
     sql = """
         SELECT from_region, to_region, capacity
@@ -163,7 +163,9 @@ def get_polygon_from_nuts(conn, nuts):
     
     
 def get_transformer(conn_oedb, scenario_name):
-    'transformers in BBB regions'
+    """
+    Retrieve all transformers in BBB regions.
+    """
 
     sql = """
         SELECT region, ressource, transformer, power
@@ -177,9 +179,9 @@ def get_transformer(conn_oedb, scenario_name):
 
 
 def get_dict_from_df(data_frame):
-    '''returns "data". data is a dict which includes the columns of the table
-    as dicts: columns of table: data[column]; cells of table: data[column][row]
-    '''
+    """
+    Converts dataframe to dictionary
+    """
     data = {}
 
     for col in data_frame.columns:
@@ -192,6 +194,9 @@ def get_dict_from_df(data_frame):
     return data
 
 def get_st_timeline(conn, year):
+    """
+    Retrieve solarthermal timeseries from database.
+    """
     sql = """
         SELECT "EFH_Altbau_san_HWW_S", "EFH_Altbau_san_HWW_SO",
         "EFH_Altbau_san_HWW_SW",
@@ -214,7 +219,6 @@ def get_st_timeline(conn, year):
                      'MFH_Altbau_san_WW_S', 'MFH_Altbau_san_WW_SO',
                      'MFH_Altbau_san_WW_SW'])
 
-    #timeline_st = pd.DataFrame(columns='st')
     timeline_st = pd.DataFrame(
         index=pd.date_range(pd.datetime(year, 1, 1, 0), periods=8760,
                             freq='H'), columns=['st'])
@@ -241,7 +245,7 @@ def get_st_timeline(conn, year):
                         read_parameter['MFH_Altbau_san_HWW_SW'].sum() +\
                         0.15 * read_parameter['MFH_Altbau_san_WW_S'][row] /\
                         read_parameter['MFH_Altbau_san_WW_S'].sum() +\
-                        0.05 * read_parameter['MFH_Altbau_san_WW_SO'][row] / \
+                        0.05 * read_parameter['MFH_Altbau_san_WW_SO'][row] /\
                         read_parameter['MFH_Altbau_san_WW_SO'].sum() +\
                         0.05 * read_parameter['MFH_Altbau_san_WW_SW'][row] /\
                         read_parameter['MFH_Altbau_san_WW_SW'].sum()
@@ -249,9 +253,9 @@ def get_st_timeline(conn, year):
 
 
 def create_transformer(esystem, region, pp, conn, **kwargs):
-
-    'Creates entities for each type of generation'
-
+    """
+    Create entities for each type of generation.
+    """
     typeofgen = kwargs.get('typeofgen')
 
     (co2_emissions, co2_fix, eta_elec, eta_th, eta_th_chp, eta_el_chp,
@@ -271,8 +275,8 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
         if typ == 'bhkw_bio':
             try:
                 capacity = float(pp.query(
-                    'region==@region.name and ressource==@typ and transformer=="bhkw"')[
-                    'power'])
+                    'region==@region.name and ressource==@typ and ' +
+                    'transformer=="bhkw"')['power'])
             except:
                 capacity = 0
             if capacity > 0:
@@ -308,8 +312,8 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
         ########################## CHP #################################
         try:
             capacity = float(pp.query(
-                'region==@region.name and ressource==@typ and transformer=="chp"')[
-                'power'])
+                'region==@region.name and ressource==@typ and ' +
+                'transformer=="chp"')['power'])
         except:
             capacity = 0
         if capacity > 0:
@@ -330,8 +334,8 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
         ########################## SE_chp #################################
         try:
             capacity = float(pp.query(
-                'region==@region.name and ressource==@typ and transformer=="SE_chp"')[
-                'power'])
+                'region==@region.name and ressource==@typ and ' +
+                'transformer=="SE_chp"')['power'])
         except:
             capacity = 0
         if capacity > 0:
@@ -346,16 +350,16 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
                 out_max=get_out_max_chp_flex(capacity, sigma_chp[typ]),
                 out_min=[0.0, 0.0],
                 eta_el_cond=eta_chp_flex_el[typ],
-                sigma=sigma_chp[typ],	 # power to heat ratio in backpr. mode
-                beta=beta_chp[typ],		# power loss index
+                sigma=sigma_chp[typ],  # power to heat ratio in backpr. mode
+                beta=beta_chp[typ],  # power loss index
                 co2_var=co2_emissions[typ],
                 regions=[region])
 
         ########################## T_el #################################
         try:
             capacity = float(pp.query(
-                'region==@region.name and ressource==@typ and transformer=="T_el"')[
-                'power'])
+                'region==@region.name and ressource==@typ and ' +
+                'transformer=="T_el"')['power'])
         except:
             capacity = 0
         if capacity > 0:
@@ -373,8 +377,8 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
         ########################## T_heat #################################
         try:
             capacity = float(pp.query(
-                'region==@region.name and ressource==@typ and transformer=="T_heat"')[
-                'power'])
+                'region==@region.name and ressource==@typ and ' +
+                'transformer=="T_heat"')['power'])
         except:
             capacity = 0
         if capacity > 0:
@@ -421,8 +425,8 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
             out_max=get_out_max_chp_flex(capacity, sigma_chp['lignite']),
             out_min=[0.0, 0.0],
             eta_el_cond=eta_chp_flex_el['schwarzepumpe'],
-            sigma=sigma_chp[typ],	 # power to heat ratio in backpr. mode
-            beta=beta_chp[typ],		# power loss index
+            sigma=sigma_chp[typ],  # power to heat ratio in backpr. mode
+            beta=beta_chp[typ],  # power loss index
             co2_var=co2_emissions[typ],
             regions=[region])
 
@@ -440,10 +444,10 @@ def create_transformer(esystem, region, pp, conn, **kwargs):
             in_max=[None],
             out_max=get_out_max_chp_flex(capacity, sigma_chp['lignite']),
             out_min=[0.0, 0.0],
-            eta_el_cond=eta_chp_flex_el['jaenschwalde'],  #TODO: softcode
-            sigma=sigma_chp[typ],	 # power to heat ratio in backpr. mode
-            beta=beta_chp[typ],		# power loss index
-            co2_var=co2_emissions[typ]*0.08,  # 92% Abscheiderate  #TODO: softcode
+            eta_el_cond=eta_chp_flex_el['jaenschwalde'],
+            sigma=sigma_chp[typ],  # power to heat ratio in backpr. mode
+            beta=beta_chp[typ],  # power loss index
+            co2_var=co2_emissions[typ]*0.08,  # 92% deposition rate  
             regions=[region])
 
 
