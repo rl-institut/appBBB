@@ -8,7 +8,6 @@ from workalendar.europe import Germany
 from oemof import db
 from oemof.tools import logger
 from oemof.core import energy_system as es
-from oemof.db import tools
 from oemof.solph import predefined_objectives as predefined_objectives
 from oemof.core.network.entities import Bus
 from oemof.core.network.entities.components import sinks as sink
@@ -30,7 +29,6 @@ warnings.simplefilter(action="ignore", category=RuntimeWarning)
 logger.define_logging()
 
 # establish database connections
-conn = db.connection() #TODO perspektivisch entfernen
 conn_oedb = db.connection(section='open_edb')
 
 # set solver
@@ -276,7 +274,7 @@ for region in Regions.regions:
         
 ###################### CREATE DECENTRAL HEATING ENTITIES #####################
 logging.info('Creating decentral heating entities')
-hlsd.create_decentral_entities(Regions, regionsBBB, demands_df, conn, year,
+hlsd.create_decentral_entities(Regions, regionsBBB, demands_df, year,
                                time_index_demandlib, eta_th, eta_in, eta_out,
                                cap_loss, opex_fix, opex_var, eta_th_chp,
                                eta_el_chp, holidays)
