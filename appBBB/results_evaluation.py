@@ -1,19 +1,19 @@
-# -*- coding: utf-8
-
 import pandas as pd
 import matplotlib.pyplot as plt
 from oemof.core import energy_system as es
 from oemof.solph.predefined_objectives import minimize_cost
 from oemof.outputlib import to_pandas as tpd
-import csv
 from oemof import db
 import helper_BBB as hlsb
 
 
 def create_es(solver, timesteps, year):
-    simulation = es.Simulation(solver=solver, timesteps=timesteps,
-                               stream_solver_output=True,
-                               debug=False, duals=True,
+    """ 
+    Creates a default energy system to load results into.
+    """
+    simulation = es.Simulation(solver=solver, 
+                               timesteps=timesteps,
+                               debug=False, 
                                objective_options={"function": minimize_cost})
 
     # Adding a time index to the energy system
@@ -26,134 +26,188 @@ def create_es(solver, timesteps, year):
 
 
 def color_dict(reg):
+    """
+    Sets colors for entities in plot of electricity sector.
+    """
     cdict = {
-             # renewables
-             "('FixedSrc', '"+reg+"', 'wind_pwr')": 'lightblue',
-             "('FixedSrc', '"+reg+"', 'pv_pwr')": 'yellow',
+             # transformer
+             "('FixedSrc', '" + reg + "', 'wind_pwr')": 'lightblue',
+             "('FixedSrc', '" + reg + "', 'pv_pwr')": 'yellow',
+ 
+             "('transformer', '" + reg + "', 'oil')": 'black',
+             "('transformer', '" + reg + "', 'oil', 'chp')": 'black',
+             "('transformer', '" + reg + "', 'oil', 'SEchp')": 'black',
 
-             "('transformer', '"+reg+"', 'oil')": 'black',
-             "('transformer', '"+reg+"', 'oil', 'chp')": 'black',
-             "('transformer', '"+reg+"', 'oil', 'SEchp')": 'black',
+             "('transformer', '" + reg + "', 'natural_gas')": 'lightgrey',
+             "('transformer', '" + reg + "', 'natural_gas', 'chp')":
+                 'lightgrey',
+             "('transformer', '" + reg + "', 'natural_gas', 'SEchp')":
+                 'lightgrey',
 
-             "('transformer', '"+reg+"', 'natural_gas')": 'lightgrey',
-             "('transformer', '"+reg+"', 'natural_gas', 'chp')": 'lightgrey',
-             "('transformer', '"+reg+"', 'natural_gas', 'SEchp')": 'lightgrey',
+             "('transformer', '" + reg + "', 'natural_gas_cc')": 'darkgrey',
+             "('transformer', '" + reg + "', 'natural_gas_cc', 'chp')":
+                 'darkgrey',
+             "('transformer', '" + reg + "', 'natural_gas_cc', 'SEchp')":
+                 'darkgrey',
 
-             "('transformer', '"+reg+"', 'natural_gas_cc')": 'darkgrey',
-             "('transformer', '"+reg+"', 'natural_gas_cc', 'chp')": 'darkgrey',
-             "('transformer', '"+reg+"', 'natural_gas_cc', 'SEchp')": 'darkgrey',
+             "('transformer', '" + reg + "', 'HH', 'bhkw_gas')": 'grey',
+             "('transformer', '" + reg + "', 'GHD', 'bhkw_gas')": 'grey',
 
-             "('transformer', '"+reg+"', 'HH', 'bhkw_gas')": 'grey',
-             "('transformer', '"+reg+"', 'GHD', 'bhkw_gas')": 'grey',
+             "('transformer', '" + reg + "', 'biomass')": 'lightgreen',
+             "('transformer', '" + reg + "', 'biomass', 'chp')": 'lightgreen',
+             "('transformer', '" + reg + "', 'biomass', 'SEchp')":
+                 'lightgreen',
 
-             "('transformer', '"+reg+"', 'biomass')": 'lightgreen',
-             "('transformer', '"+reg+"', 'biomass', 'chp')": 'lightgreen',
-             "('transformer', '"+reg+"', 'biomass', 'SEchp')": 'lightgreen',
+             "('transformer', '" + reg + "', 'HH', 'bhkw_bio')": 'green',
+             "('transformer', '" + reg + "', 'GHD', 'bhkw_bio')": 'green',
 
-             "('transformer', '"+reg+"', 'HH', 'bhkw_bio')": 'green',
-             "('transformer', '"+reg+"', 'GHD', 'bhkw_bio')": 'green',
+             "('transformer', '" + reg + "', 'powertoheat')": 'lightsalmon',
 
-             "('transformer', '"+reg+"', 'powertoheat')": 'lightsalmon',
+             "('transformer', '" + reg + "', 'lignite_jw', 'SEchp')": 'brown',
+             "('transformer', '" + reg + "', 'lignite_sp', 'SEchp')": 'orange',
 
-             "('transformer', '"+reg+"', 'lignite_jw', 'SEchp')": 'brown',
-             "('transformer', '"+reg+"', 'lignite_sp', 'SEchp')": 'orange',
-             "('demand', '"+reg+"', 'elec')": 'red',
-             "('demand', '"+reg+"', 'elec', 'mob')": 'red',
-             "('bus', '"+reg+"', 'elec')_excess": 'purple',
-             "('bus', '"+reg+"', 'elec')_shortage": 'blueviolet',
-             "('transformer', '"+reg+"', 'hp', 'brine', 'ww')": 'blue',
-             "('transformer', '"+reg+"', 'hp', 'brine', 'heating')": 'blue',
-             "('transformer', '"+reg+"', 'hp', 'air', 'ww')": 'blue',
-             "('transformer', '"+reg+"', 'hp', 'air', 'heating')": 'blue',
-             "('transformer', '"+reg+"', 'hp', 'air', 'ww', 'rod')": 'blue',
-             "('transformer', '"+reg+"', 'hp', 'air', 'heating', 'rod')": 'blue',
+             # demand
+             "('demand', '" + reg + "', 'elec')": 'red',
+             "('demand', '" + reg + "', 'elec', 'mob')": 'red',
 
+             # shortage / excess
+             "('bus', '" + reg + "', 'elec')_excess": 'purple',
+             "('bus', '" + reg + "', 'elec')_shortage": 'blueviolet',
+
+             # heat pump
+             "('transformer', '" + reg + "', 'hp', 'brine', 'ww')": 'blue',
+             "('transformer', '" + reg + "', 'hp', 'brine', 'heating')":
+                 'blue',
+             "('transformer', '" + reg + "', 'hp', 'air', 'ww')": 'blue',
+             "('transformer', '" + reg + "', 'hp', 'air', 'heating')": 'blue',
+             "('transformer', '" + reg + "', 'hp', 'air', 'ww', 'rod')":
+                 'blue',
+             "('transformer', '" + reg + "', 'hp', 'air', 'heating', 'rod')":
+                 'blue',
+
+             # transport
              "transport_('bus', 'UB', 'elec')('bus', 'OS', 'elec')": 'salmon',
              "transport_('bus', 'OS', 'elec')('bus', 'UB', 'elec')": 'salmon',
-             "transport_('bus', 'OS', 'elec')('bus', 'LS', 'elec')": 'chocolate',
-             "transport_('bus', 'LS', 'elec')('bus', 'OS', 'elec')": 'chocolate',
+             "transport_('bus', 'OS', 'elec')('bus', 'LS', 'elec')":
+                 'chocolate',
+             "transport_('bus', 'LS', 'elec')('bus', 'OS', 'elec')":
+                 'chocolate',
              "transport_('bus', 'OS', 'elec')('bus', 'BE', 'elec')": 'peru',
              "transport_('bus', 'BE', 'elec')('bus', 'OS', 'elec')": 'peru',
-             "transport_('bus', 'LS', 'elec')('bus', 'HF', 'elec')": 'burlywood',
-             "transport_('bus', 'HF', 'elec')('bus', 'LS', 'elec')": 'burlywood',
-             "transport_('bus', 'HF', 'elec')('bus', 'PO', 'elec')": 'goldenrod',
-             "transport_('bus', 'PO', 'elec')('bus', 'HF', 'elec')": 'goldenrod',
+             "transport_('bus', 'LS', 'elec')('bus', 'HF', 'elec')":
+                 'burlywood',
+             "transport_('bus', 'HF', 'elec')('bus', 'LS', 'elec')":
+                 'burlywood',
+             "transport_('bus', 'HF', 'elec')('bus', 'PO', 'elec')":
+                 'goldenrod',
+             "transport_('bus', 'PO', 'elec')('bus', 'HF', 'elec')":
+                 'goldenrod',
              "transport_('bus', 'HF', 'elec')('bus', 'BE', 'elec')": 'khaki',
              "transport_('bus', 'BE', 'elec')('bus', 'HF', 'elec')": 'khaki',
-             "transport_('bus', 'PO', 'elec')('bus', 'OS', 'elec')": 'indianred',
-             "transport_('bus', 'OS', 'elec')('bus', 'PO', 'elec')": 'indianred',
-
+             "transport_('bus', 'PO', 'elec')('bus', 'OS', 'elec')":
+                 'indianred',
+             "transport_('bus', 'OS', 'elec')('bus', 'PO', 'elec')":
+                 'indianred',
              "transport_('bus', 'UB', 'elec')('bus', 'KJ', 'elec')": 'lime',
              "transport_('bus', 'UB', 'elec')('bus', 'MV', 'elec')": 'cyan',
              "transport_('bus', 'PO', 'elec')('bus', 'MV', 'elec')": 'teal',
-             "transport_('bus', 'PO', 'elec')('bus', 'ST', 'elec')": 'seagreen',
-             "transport_('bus', 'HF', 'elec')('bus', 'ST', 'elec')": 'yellowgreen',
-             "transport_('bus', 'LS', 'elec')('bus', 'SN', 'elec')": 'turquoise',
+             "transport_('bus', 'PO', 'elec')('bus', 'ST', 'elec')":
+                 'seagreen',
+             "transport_('bus', 'HF', 'elec')('bus', 'ST', 'elec')":
+                 'yellowgreen',
+             "transport_('bus', 'LS', 'elec')('bus', 'SN', 'elec')":
+                 'turquoise',
              "transport_('bus', 'BE', 'elec')('bus', 'HF', 'elec')": 'olive',
-             "transport_('bus', 'BE', 'elec')('bus', 'OS', 'elec')": 'lightseagreen',
-
+             "transport_('bus', 'BE', 'elec')('bus', 'OS', 'elec')":
+                 'lightseagreen',
              "transport_('bus', 'KJ', 'import')('bus', 'UB', 'elec')": 'lime',
              "transport_('bus', 'MV', 'import')('bus', 'UB', 'elec')": 'cyan',
              "transport_('bus', 'MV', 'import')('bus', 'PO', 'elec')": 'teal',
-             "transport_('bus', 'ST', 'import')('bus', 'PO', 'elec')": 'seagreen',
-             "transport_('bus', 'ST', 'import')('bus', 'HF', 'elec')": 'yellowgreen',
-             "transport_('bus', 'SN', 'import')('bus', 'LS', 'elec')": 'turquoise',
+             "transport_('bus', 'ST', 'import')('bus', 'PO', 'elec')":
+                 'seagreen',
+             "transport_('bus', 'ST', 'import')('bus', 'HF', 'elec')":
+                 'yellowgreen',
+             "transport_('bus', 'SN', 'import')('bus', 'LS', 'elec')":
+                 'turquoise',
              "transport_('bus', 'HF', 'elec')('bus', 'BE', 'elec')": 'olive',
-             "transport_('bus', 'OS', 'elec')('bus', 'BE', 'elec')": 'lightseagreen'}
+             "transport_('bus', 'OS', 'elec')('bus', 'BE', 'elec')":
+                 'lightseagreen'}
     return cdict
 
 def color_dict_dh(reg):
+    """
+    Sets colors for entities in plot of district heating.
+    """
     cdict = {
-             "('transformer', '"+reg+"', 'oil', 'chp')": 'black',
-             "('transformer', '"+reg+"', 'oil', 'SEchp')": 'black',
-             "('heat_transformer', '"+reg+"', 'oil')": 'black',
+             # transformer
+             "('transformer', '" + reg + "', 'oil', 'chp')": 'black',
+             "('transformer', '" + reg + "', 'oil', 'SEchp')": 'black',
+             "('heat_transformer', '" + reg + "', 'oil')": 'black',
 
-             "('transformer', '"+reg+"', 'natural_gas', 'chp')": 'lightgrey',
-             "('transformer', '"+reg+"', 'natural_gas', 'SEchp')": 'lightgrey',
-             "('heat_transformer', '"+reg+"', 'natural_gas')": 'lightgrey',
-             "('transformer', '"+reg+"', 'dh_peak_heating')": 'khaki',
+             "('transformer', '" + reg + "', 'natural_gas', 'chp')":
+                 'lightgrey',
+             "('transformer', '" + reg + "', 'natural_gas', 'SEchp')":
+                 'lightgrey',
+             "('heat_transformer', '" + reg + "', 'natural_gas')":
+                 'lightgrey',
+             "('transformer', '" + reg + "', 'dh_peak_heating')": 'khaki',
 
-             "('transformer', '"+reg+"', 'natural_gas_cc', 'chp')": 'darkgrey',
-             "('transformer', '"+reg+"', 'natural_gas_cc', 'SEchp')": 'darkgrey',
+             "('transformer', '" + reg + "', 'natural_gas_cc', 'chp')":
+                 'darkgrey',
+             "('transformer', '" + reg + "', 'natural_gas_cc', 'SEchp')":
+                 'darkgrey',
 
-             "('transformer', '"+reg+"', 'biomass', 'chp')": 'lightgreen',
-             "('transformer', '"+reg+"', 'biomass', 'SEchp')": 'lightgreen',
-             "('heat_transformer', '"+reg+"', 'biomass')": 'lightgreen',
+             "('transformer', '" + reg + "', 'biomass', 'chp')": 'lightgreen',
+             "('transformer', '" + reg + "', 'biomass', 'SEchp')":
+                 'lightgreen',
+             "('heat_transformer', '" + reg + "', 'biomass')": 'lightgreen',
 
-             "('transformer', '"+reg+"', 'lignite_jw', 'SEchp')": 'brown',
-             "('transformer', '"+reg+"', 'lignite_sp', 'SEchp')": 'orange',
+             "('transformer', '" + reg + "', 'lignite_jw', 'SEchp')": 'brown',
+             "('transformer', '" + reg + "', 'lignite_sp', 'SEchp')": 'orange',
 
-             "('transformer', '"+reg+"', 'powertoheat')": 'lightsalmon',
+             "('transformer', '" + reg + "', 'powertoheat')": 'lightsalmon',
 
-             "('demand', '"+reg+"', 'dh')": 'red',
+             # demand
+             "('demand', '" + reg + "', 'dh')": 'red',
 
-             "('bus', '"+reg+"', 'dh')_excess": 'purple',
-             "('bus', '"+reg+"', 'dh')_shortage": 'blue'}
+             # shortag / excess 
+             "('bus', '" + reg + "', 'dh')_excess": 'purple',
+             "('bus', '" + reg + "', 'dh')_shortage": 'blue'}
     return cdict
 
 
 def stack_plot(energysystem, reg, bus, date_from, date_to):
-    # Plotting a combined stacked plot
+    """
+    Creates a stack plot of the specified bus.
+    """
+    # initialize plot
     myplot = tpd.DataFramePlot(energy_system=energysystem)
-
+    
+    # get dictionary with color of each entity in plot
     if bus == 'elec':
         cdict = color_dict(reg)
     elif bus == 'dh':
         cdict = color_dict_dh(reg)
 
-    ## Plotting the input flows of the electricity bus
-    myplot.slice_unstacked(bus_uid="('bus', '"+reg+"', '"+bus+"')", type="input",
-                           date_from=date_from,
-                           date_to=date_to)
+    # slice dataframe to prepare for plot function
+    myplot.slice_unstacked(
+        bus_uid="('bus', '" + reg + "', '" + bus + "')",
+        type="input",
+        date_from=date_from,
+        date_to=date_to)
     myplot.color_from_dict(cdict)
 
+    # set plot parameters
     fig = plt.figure(figsize=(40, 14))
     plt.rc('legend', **{'fontsize': 18})
     plt.rcParams.update({'font.size': 18})
     plt.style.use('grayscale')
 
+    # plot bus
     handles, labels = myplot.io_plot(
-        bus_uid="('bus', '"+reg+"', '"+bus+"')", cdict=cdict, line_kwa={'linewidth': 4},
+        bus_uid="('bus', '" + reg + "', '" + bus + "')", 
+        cdict=cdict, 
+        line_kwa={'linewidth': 4},
         ax=fig.add_subplot(1, 1, 1),
         date_from=date_from,
         date_to=date_to,
@@ -169,20 +223,21 @@ def stack_plot(energysystem, reg, bus, date_from, date_to):
 
 
 def sum_max_output_of_component(energysystem, from_uid, to_uid):
+    """
+    Returns the sum and the maximum of the flow from entity with 'from_uid'
+    to entity with 'to_uid'.
+    """
     results_bus = energysystem.results[[obj for obj in energysystem.entities
         if obj.uid == (from_uid)][0]]
     results_bus_component = results_bus[[obj for obj in energysystem.entities
         if obj.uid == (to_uid)][0]]
     return sum(results_bus_component), max(results_bus_component)
 
-def timeseries_of_component(energysystem, from_uid, to_uid):
-    results_bus = energysystem.results[[obj for obj in energysystem.entities
-        if obj.uid == (from_uid)][0]]
-    results_bus_component = results_bus[[obj for obj in energysystem.entities
-        if obj.uid == (to_uid)][0]]
-    return results_bus_component
 
-def timeseries_of_component_dh(energysystem, from_uid, to_uid):
+def timeseries_of_component(energysystem, from_uid, to_uid):
+    """
+    Returns the flow from entity with 'from_uid' to entity with 'to_uid'.
+    """
     results_bus = energysystem.results[[obj for obj in energysystem.entities
         if obj.uid == (from_uid)][0]]
     results_bus_component = results_bus[[obj for obj in energysystem.entities
@@ -191,50 +246,56 @@ def timeseries_of_component_dh(energysystem, from_uid, to_uid):
 
 
 def print_validation_outputs(energysystem, reg, results_dc):
+    """
+    Conducts validation checks of the results.
+    """
+    # connect to database
     conn_oedb = db.connection(section='open_edb')
 
+    # get paremeters of transformers from database
     (co2_emissions, co2_fix, eta_elec, eta_th, eta_th_chp, eta_el_chp,
      eta_chp_flex_el, sigma_chp, beta_chp, opex_var, opex_fix, capex,
      c_rate_in, c_rate_out, eta_in, eta_out,
      cap_loss, lifetime, wacc) = hlsb.get_parameters(conn_oedb)
 
-    # capacities of pp
+    # list of possible power plants in region
     pp = [
-        "('FixedSrc', '"+reg+"', 'wind_pwr')",
-        "('FixedSrc', '"+reg+"', 'pv_pwr')",
+        "('FixedSrc', '" + reg + "', 'wind_pwr')",
+        "('FixedSrc', '" + reg + "', 'pv_pwr')",
 
-        "('transformer', '"+reg+"', 'oil')",
-        "('transformer', '"+reg+"', 'oil', 'chp')",
-        "('transformer', '"+reg+"', 'oil', 'SEchp')",
+        "('transformer', '" + reg + "', 'oil')",
+        "('transformer', '" + reg + "', 'oil', 'chp')",
+        "('transformer', '" + reg + "', 'oil', 'SEchp')",
 
-        "('transformer', '"+reg+"', 'natural_gas')",
-        "('transformer', '"+reg+"', 'natural_gas', 'chp')",
-        "('transformer', '"+reg+"', 'natural_gas', 'SEchp')",
+        "('transformer', '" + reg + "', 'natural_gas')",
+        "('transformer', '" + reg + "', 'natural_gas', 'chp')",
+        "('transformer', '" + reg + "', 'natural_gas', 'SEchp')",
 
-        "('transformer', '"+reg+"', 'natural_gas_cc')",
-        "('transformer', '"+reg+"', 'natural_gas_cc', 'chp')",
-        "('transformer', '"+reg+"', 'natural_gas_cc', 'SEchp')",
+        "('transformer', '" + reg + "', 'natural_gas_cc')",
+        "('transformer', '" + reg + "', 'natural_gas_cc', 'chp')",
+        "('transformer', '" + reg + "', 'natural_gas_cc', 'SEchp')",
 
-        "('transformer', '"+reg+"', 'biomass')",
-        "('transformer', '"+reg+"', 'biomass', 'chp')",
-        "('transformer', '"+reg+"', 'biomass', 'SEchp')",
+        "('transformer', '" + reg + "', 'biomass')",
+        "('transformer', '" + reg + "', 'biomass', 'chp')",
+        "('transformer', '" + reg + "', 'biomass', 'SEchp')",
 
-        "('transformer', '"+reg+"', 'HH', 'bhkw_gas')",
-        "('transformer', '"+reg+"', 'GHD', 'bhkw_gas')",
+        "('transformer', '" + reg + "', 'HH', 'bhkw_gas')",
+        "('transformer', '" + reg + "', 'GHD', 'bhkw_gas')",
 
-        "('transformer', '"+reg+"', 'HH', 'bhkw_bio')",
-        "('transformer', '"+reg+"', 'GHD', 'bhkw_bio')",
+        "('transformer', '" + reg + "', 'HH', 'bhkw_bio')",
+        "('transformer', '" + reg + "', 'GHD', 'bhkw_bio')",
 
-        "('transformer', '"+reg+"', 'bhkw_bio')",
-        "('transformer', '"+reg+"', 'bhkw_bio', 'dh')",
+        "('transformer', '" + reg + "', 'bhkw_bio')",
+        "('transformer', '" + reg + "', 'bhkw_bio', 'dh')",
 
-        "('transformer', '"+reg+"', 'dh_peak_heating')",
+        "('transformer', '" + reg + "', 'dh_peak_heating')",
 
-        "('transformer', '"+reg+"', 'lignite_jw', 'SEchp')",
-        "('transformer', '"+reg+"', 'lignite_sp', 'SEchp')",
+        "('transformer', '" + reg + "', 'lignite_jw', 'SEchp')",
+        "('transformer', '" + reg + "', 'lignite_sp', 'SEchp')",
 
-        "('transformer', '"+reg+"', 'powertoheat')"]
+        "('transformer', '" + reg + "', 'powertoheat')"]
 
+    # list of efficiencies of the above transformers
     eta_el = [
             1,
             1,
@@ -269,6 +330,7 @@ def print_validation_outputs(energysystem, reg, results_dc):
             0  # powertoheat
             ]
 
+    # list of CO2 emissions of the above transformers   
     co2 = [
             0,
             0,
@@ -303,46 +365,49 @@ def print_validation_outputs(energysystem, reg, results_dc):
             0  # powertoheat
             ]
 
-    ebus = "('bus', '"+reg+"', 'elec')"
-    dhbus = "('bus', '"+reg+"', 'dh')"
-    short = "('bus', '"+reg+"', 'elec')_shortage"
-    short_dh = "('bus', '"+reg+"', 'dh')_shortage"
-    excess = "('bus', '"+reg+"', 'elec')_excess"
-    excess_dh = "('bus', '"+reg+"', 'dh')_excess"
+    ebus = "('bus', '" + reg + "', 'elec')"
+    dhbus = "('bus', '" + reg + "', 'dh')"
+    short = "('bus', '" + reg + "', 'elec')_shortage"
+    excess = "('bus', '" + reg + "', 'elec')_excess"
+    excess_dh = "('bus', '" + reg + "', 'dh')_excess"
+    
     summe_plant_dict = {}
-    frame = pd.DataFrame(index=pp)
+
     el_energy = list()
     dh_energy = list()
     
     for p in pp:
         print(p)
-        try:  # el_transformer
+        # if flow from transformer to electricity bus
+        try:
             summe_plant_dict[p], maximum = sum_max_output_of_component(
                 energysystem, p, ebus)
             print(('sum:' + str(summe_plant_dict[p])))
             print(('max:' + str(maximum)))
-            results_dc['sum '+ reg + str(p)] = summe_plant_dict[p]
-            results_dc['max '+ reg + str(p)] = maximum
+            results_dc['sum ' + reg + str(p)] = summe_plant_dict[p]
+            results_dc['max ' + reg + str(p)] = maximum
             el_energy.append(summe_plant_dict[p])
         except:
             print('nicht vorhanden')
+            results_dc['sum ' + reg + str(p)] = 0
+            results_dc['max ' + reg + str(p)] = 0
             el_energy.append(0)
-            results_dc['sum '+ reg + str(p)] = 0
-            results_dc['max '+ reg + str(p)] = 0
         try:
-            print(('vls:' + str(summe_plant_dict[p] / maximum)))
+            print(('vlh:' + str(summe_plant_dict[p] / maximum)))
             results_dc['vlh ' + reg + str(p)] = summe_plant_dict[p] / maximum
         except:
             results_dc['vlh ' + reg + str(p)] = 0
         print('\n')
-        try:  # heat transformer
-            summe_plant_dict['dh'+p], maximum = sum_max_output_of_component(
+        # if flow from transformer to district heating bus
+        try: 
+            summe_plant_dict['dh' + p], maximum = sum_max_output_of_component(
                 energysystem, p, dhbus)
-            print(('sum:' + str(summe_plant_dict['dh'+p])))
+            print(('sum:' + str(summe_plant_dict['dh' + p])))
             print(('max:' + str(maximum)))
-            results_dc['sum '+ reg + str(p)+'_dh'] = summe_plant_dict['dh'+p]
-            results_dc['max '+ reg + str(p)+'_dh'] = maximum
-            dh_energy.append(summe_plant_dict['dh'+p])
+            results_dc['sum '+ reg + str(p) + '_dh'] = \
+                summe_plant_dict['dh' + p]
+            results_dc['max '+ reg + str(p) + '_dh'] = maximum
+            dh_energy.append(summe_plant_dict['dh' + p])
         except:
             print('nicht vorhanden')
             dh_energy.append(0)
@@ -364,6 +429,7 @@ def print_validation_outputs(energysystem, reg, results_dc):
     results_dc['el_shortage_max ' + reg] = maximum
     print('\n')
     
+    frame = pd.DataFrame(index=pp)
     frame['dh_energy'] = dh_energy    
     frame['energy_sum'] = el_energy
     frame['eta_el'] = eta_el
