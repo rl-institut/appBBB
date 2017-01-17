@@ -340,7 +340,7 @@ for region_name in Import_Regions:
 # create separate electricity buses for import and export
 for region in Regions.regions:
     if region.name in Import_Regions:
-        Bus(uid="('bus', '" + region.name + "', 'export')",
+        Bus(uid="('bus', '" + region.name + "', 'elec')",
             type='elec',
             regions=[region],
             excess=True)
@@ -366,8 +366,7 @@ for entry in transmission['from']:
         for entity in Regions.entities:
             if entity.uid == "('bus', '" + from_reg + "', 'elec')":
                 ebus_from = entity
-            if (entity.uid == "('bus', '" + to_reg + "', 'export')" or
-                entity.uid == "('bus', '" + to_reg + "', 'elec')"):
+            if entity.uid == "('bus', '" + to_reg + "', 'elec')":
                 ebus_export = entity
             if entity.uid == "('bus', '" + to_reg + "', 'import')":
                 ebus_import = entity
