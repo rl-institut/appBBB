@@ -54,9 +54,13 @@ def create_decentral_entities(Regions, regionsBBB, demands_df, year,
 #        for weather in multiWeather:
 #            temp += weather.data['temp_air'].as_matrix()
 #        temp = pd.Series(temp / len(multiWeather) - 273.15)
-#        pickle.dump(temp, open( "temp.pickle", "wb" ))
+#        filename = os.path.abspath(
+#            os.path.join(os.path.dirname(__file__), 'data',
+#                        'temp_' + regID + '.pickle'))
+#        pickle.dump(temp, open(filename, "wb" ))        
         filename = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), 'temp.pickle'))
+            os.path.join(os.path.dirname(__file__), 'data',
+                         'temp_' + regID + '.pickle'))
         temp = pd.read_pickle(filename)
         region.temp = temp
         

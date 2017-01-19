@@ -761,7 +761,7 @@ if __name__ == "__main__":
     get_supply_demand_timeseries(energysystem, year, path_to_dump)
     # get exports from Brandenburg to neighbor regions and imports from  
     # neighbor regions to Brandenburg
-    print_exports(energysystem, results_dc, year, path_to_dump) ##
+    print_exports(energysystem, results_dc, year, path_to_dump)
     # add flows between regions in Brandenburg and between Brandenburg and
     # Berlin to results_dc
     print_im_exports(energysystem, results_dc, year, path_to_dump)
@@ -791,10 +791,13 @@ if __name__ == "__main__":
     # write to csv
     transformer_results_df.to_csv(path_to_dump + 'co2_el_energy.csv')
     
-    keys = list(results_dc.keys())
-    values = list(results_dc.values())
     f = open(path_to_dump + '_results.csv', 'w', newline='')
     w = csv.writer(f, delimiter=';')
-    w.writerow(keys)
-    w.writerow(values)
+    w.writerow(list(results_dc.keys()))
+    w.writerow(list(results_dc.values()))
+    f.close
+    f = open(path_to_dump + '_results.csv', 'w', newline='')
+    w = csv.writer(f, delimiter=';')
+    w.writerow(list(results_dc.keys()))
+    w.writerow(list(results_dc.values()))
     f.close
