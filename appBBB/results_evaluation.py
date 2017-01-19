@@ -1,3 +1,5 @@
+from os.path import expanduser
+import csv
 import pandas as pd
 import matplotlib.pyplot as plt
 from oemof.core import energy_system as es
@@ -247,7 +249,8 @@ def timeseries_of_component(energysystem, from_uid, to_uid):
 
 def print_validation_outputs(energysystem, reg, results_dc):
     """
-    Conducts validation checks of the results.
+    Returns sums and maximums of flows as well as full load hours of
+    transformers.
     """
     # connect to database
     conn_oedb = db.connection(section='open_edb')
@@ -364,18 +367,13 @@ def print_validation_outputs(energysystem, reg, results_dc):
             co2_emissions['lignite'],
             0  # powertoheat
             ]
-
+    # get sum and maximum of each flow from transformer to bus as well as 
+    # full load hours of each transformer
     ebus = "('bus', '" + reg + "', 'elec')"
-    dhbus = "('bus', '" + reg + "', 'dh')"
-    short = "('bus', '" + reg + "', 'elec')_shortage"
-    excess = "('bus', '" + reg + "', 'elec')_excess"
-    excess_dh = "('bus', '" + reg + "', 'dh')_excess"
-    
+    dhbus = "('bus', '" + reg + "', 'dh')" 
     summe_plant_dict = {}
-
     el_energy = list()
     dh_energy = list()
-    
     for p in pp:
         print(p)
         # if flow from transformer to electricity bus
@@ -415,59 +413,61 @@ def print_validation_outputs(energysystem, reg, results_dc):
             results_dc['max '+ reg + str(p)+'_dh'] = 0
         try:
             print(('vls:' + str(summe_plant_dict[p] / maximum)))
-            results_dc['vlh ' + reg + str(p)+'_dh'] = summe_plant_dict[p] / maximum
+            results_dc['vlh ' + reg + str(p)+'_dh'] = (summe_plant_dict[p] /
+                maximum)
         except:
             results_dc['vlh ' + reg + str(p)+'_dh'] = 0
         print('\n')
 
-    # shortage
+    # get sum and maximum of electricity shortage
+    shortage_bus = "('bus', '" + reg + "', 'elec')_shortage"
     summe_plant, maximum = sum_max_output_of_component(
-        energysystem, short, ebus)
+        energysystem, shortage_bus, ebus)
     print(('el_shortage_sum:' + str(summe_plant)))
-    results_dc['el_shortage ' + reg] = str(summe_plant)
     print(('el_shortage_max:' + str(maximum)))
+    results_dc['el_shortage ' + reg] = str(summe_plant)
     results_dc['el_shortage_max ' + reg] = maximum
     print('\n')
+
+    # get sum and maximum of excess in district heating
+    excess_dh = "('bus', '" + reg + "', 'dh')_excess"
+    summe_plant, maximum = sum_max_output_of_component(
+        energysystem, dhbus, excess_dh)
+    print(('dh_excess_sum:' + str(summe_plant)))
+    print(('dh_excess_max:' + str(maximum)))
+    results_dc['dh_excess_sum ' + reg] = summe_plant
+    results_dc['dh_excess_max ' + reg] = maximum
     
+    # get sum and maximum of electricity excess
+    excess = "('bus', '" + reg + "', 'elec')_excess"    
+    summe_plant, maximum = sum_max_output_of_component(
+        energysystem, ebus, excess)
+    print(('el_excess_sum:' + str(summe_plant)))
+    print(('el_excess_max:' + str(maximum)))
+    results_dc['el_excess_sum ' + reg] = summe_plant
+    results_dc['el_excess_max ' + reg] = maximum
+    
+    # get sum of flows from wind turbines and pv systems to electricity bus
+    sum_fee = (summe_plant_dict["('FixedSrc', '" + reg + "', 'wind_pwr')"] +
+               summe_plant_dict["('FixedSrc', '" + reg + "', 'pv_pwr')"])
+    print(('share excess wind + pv:' + str((summe_plant / sum_fee) * 100)))
+    
+    # create dataframe with power output of each transformer, electrical
+    # efficiency and CO2 per MWh
     frame = pd.DataFrame(index=pp)
     frame['dh_energy'] = dh_energy    
     frame['energy_sum'] = el_energy
     frame['eta_el'] = eta_el
-#    frame['PE'] = float(el_energy) / float(eta_el)
     frame['co2'] = co2
-#    frame['emissions'] = float(el_energy) * float(co2) / float(eta_el)
-
-#    summe_plant, maximum = sum_max_output_of_component(
-#        energysystem, short_dh, dh)
-#    print(('dh_shortage_sum:' + str(summe_plant)))
-#    results_dc[reg + ' dh_shortage'] = summe_plant
-#    print(('dh_shortage_max:' + str(maximum)))
-#    results_dc[reg + ' dh_shortage_max'] = maximum
-#    print('\n')
-
-    # excess
-    summe_plant, maximum = sum_max_output_of_component(
-        energysystem, ebus, excess)
-    print(('el_excess_sum:' + str(summe_plant)))
-    results_dc['el_excess_sum ' + reg] = summe_plant
-    print(('el_excess_max:' + str(maximum)))
-    results_dc['el_excess_max ' + reg] = maximum
-# excess_dh
-    summe_plant, maximum = sum_max_output_of_component(
-        energysystem, dhbus, excess_dh)
-    print(('dh_excess_sum:' + str(summe_plant)))
-    results_dc['dh_excess_sum ' + reg] = summe_plant
-    print(('dh_excess_max:' + str(maximum)))
-    results_dc['dh_excess_max ' + reg] = maximum
-
-    sum_fee = (summe_plant_dict["('FixedSrc', '"+reg+"', 'wind_pwr')"] +
-               summe_plant_dict["('FixedSrc', '"+reg+"', 'pv_pwr')"])
-    print(('share excess:' + str((summe_plant / sum_fee) * 100)))
+    
     return (results_dc, frame)
 
 
-def print_exports(energysystem, results_dc):
-
+def print_exports(energysystem, results_dc, year, path):
+    """
+    Get exports from Brandenburg to neighbor regions and imports from neighbor 
+    regions to Brandenburg.
+    """
     export_from = ["('bus', 'UB', 'elec')",
                    "('bus', 'UB', 'elec')",
                    "('bus', 'PO', 'elec')",
@@ -477,7 +477,6 @@ def print_exports(energysystem, results_dc):
                    "('bus', 'HF', 'elec')",
                    "('bus', 'OS', 'elec')"]
     import_to = export_from
-
     export_to = ["transport_('bus', 'UB', 'elec')('bus', 'KJ', 'elec')",
                  "transport_('bus', 'UB', 'elec')('bus', 'MV', 'elec')",
                  "transport_('bus', 'PO', 'elec')('bus', 'MV', 'elec')",
@@ -495,44 +494,48 @@ def print_exports(energysystem, results_dc):
                  "transport_('bus', 'HF', 'elec')('bus', 'BE', 'elec')",
                  "transport_('bus', 'OS', 'elec')('bus', 'BE', 'elec')"]
 
-    time_index = pd.date_range('1/1/{0}'.format(2010), periods=8760, freq='H')
+    time_index = pd.date_range('1/1/{0}'.format(year), periods=8760, freq='H')
     time_no_export = pd.DataFrame(index=time_index)
     exports = pd.DataFrame(index=time_index)
     imports = pd.DataFrame(index=time_index)
-    export_all = 0
+    export_total = 0
     for i in range(len(export_from)):
         print(export_to[i])
-#        time = timeseries_of_component(
-#                energysystem, export_from[i], export_to[i])
-#        print(time)
+        # sum of export
         summe_ex, maximum = sum_max_output_of_component(
             energysystem, export_from[i], export_to[i])
-        export_all += summe_ex
+        export_total += summe_ex
         print('export:')
         print(summe_ex)
         results_dc['export ' + export_to[i] + ' summe'] = summe_ex
-
+        # maximum of export
         print('max:')
         print(maximum)
         results_dc['export ' + export_to[i] + ' maximum'] = maximum
+        # timeseries
         exports[export_to[i]] = timeseries_of_component(
             energysystem, export_from[i], export_to[i])
         imports[export_to[i]] = timeseries_of_component(
             energysystem, import_from[i], import_to[i])
-        time_no_export[export_to[i]] = exports[export_to[i]] - imports[export_to[i]]
+        time_no_export[export_to[i]] = (exports[export_to[i]] -
+            imports[export_to[i]])
+    # total export
     print('export_gesamt:')
-    print(export_all)
-    exports.to_csv(path+'exports.csv')
-    imports.to_csv(path+'imports.csv')
-    time_no_export.to_csv(path+'no_export.csv')
-    results_dc['export gesamt: '] = export_all
+    print(export_total)
+    results_dc['export gesamt: '] = export_total
+    # save import and export timeseries to csv
+    exports.to_csv(path + 'exports.csv')
+    imports.to_csv(path + 'imports.csv')
+    time_no_export.to_csv(path + 'no_export.csv')
     
+    return (results_dc, time_no_export)
 
-    return(results_dc, time_no_export)
 
-
-def print_im_exports(energysystem, results_dc):
-
+def print_im_exports(energysystem, results_dc, year, path):
+    """
+    Adds flows between regions in Brandenburg and between Brandenburg and
+    Berlin to results_dc.
+    """
     export_from = ["('bus', 'UB', 'elec')",
                    "('bus', 'PO', 'elec')",
                    "('bus', 'HF', 'elec')",
@@ -555,7 +558,7 @@ def print_im_exports(energysystem, results_dc):
              "transport_('bus', 'PO', 'elec')('bus', 'OS', 'elec')",
              "transport_('bus', 'OS', 'elec')('bus', 'PO', 'elec')"]
 
-    time_index = pd.date_range('1/1/{0}'.format(2010), periods=8760, freq='H')
+    time_index = pd.date_range('1/1/{0}'.format(year), periods=8760, freq='H')
     BBB_Kuppelstellen = pd.DataFrame(index=time_index)
         
     export_all = 0
@@ -567,50 +570,42 @@ def print_im_exports(energysystem, results_dc):
                 summe_ex, maximum = sum_max_output_of_component(
                     energysystem, i, k)
                 export_all += summe_ex
-                print('from '+i+' to '+k)
+                print('from '+ i + ' to '+ k)
                 print(summe_ex)
                 results_dc['export from ' + i + ' to ' + k] = summe_ex
-                results_dc['export from ' + i + ' to ' + k + ' maximum'] = maximum
+                results_dc['export from ' + i + ' to ' + k + ' maximum'] = \
+                    maximum
                 BBB_Kuppelstellen['export from ' + i + ' to ' + k] = \
                     timeseries_of_component(energysystem, i, k)
             except:
                 pass
-
-#        time = timeseries_of_component(
-#                energysystem, export_from[i], export_to[i])
-#        print(time)
+    # total of flows
     print('export_in_BBB_gesamt:')
     print(export_all)
     results_dc['export in BBB gesamt: '] = export_all
-    BBB_Kuppelstellen.to_csv(path+'kuppelstellen.csv')
+    # timeseries to csv
+    BBB_Kuppelstellen.to_csv(path + 'kuppelstellen.csv')
 
-    return(results_dc)
+    return results_dc
 
 
-## capacities
 def get_share_ee(energysystem, reg, results_dc):
-
-    dh_transformer = (
-            "('transformer', '"+reg+"', 'oil', 'chp')",
-            "('transformer', '"+reg+"', 'oil', 'SEchp')",
-            "('transformer', '"+reg+"', 'biomass', 'chp')",
-            "('transformer', '"+reg+"', 'biomass', 'SEchp')",
-            "('transformer', '"+reg+"', 'natural_gas', 'chp')",
-            "('transformer', '"+reg+"', 'natural_gas', 'SEchp')",
-            "('transformer', '"+reg+"', 'natural_gas_cc', 'chp')",
-            "('transformer', '"+reg+"', 'natural_gas_cc', 'SEchp')",
-            "('transformer', '"+reg+"', 'lignite_sp', 'SEchp')",
-            "('transformer', '"+reg+"', 'lignite_jw', 'SEchp')")
-
-    ebus = "('bus', '"+reg+"', 'elec')"
+    """
+    Get shares of wind and pv on demand fulfillment.
+    """
+    # get feedin timeseries from wind and pv to electricity bus
+    ebus = "('bus', '" + reg + "', 'elec')"
     pv_time = timeseries_of_component(
-                energysystem, "('FixedSrc', '"+reg+"', 'pv_pwr')", ebus)
+        energysystem, "('FixedSrc', '" + reg + "', 'pv_pwr')", ebus)
     wind_time = timeseries_of_component(
-                energysystem, "('FixedSrc', '"+reg+"', 'wind_pwr')", ebus)
+        energysystem, "('FixedSrc', '" + reg + "', 'wind_pwr')", ebus)
+    # get electricity demand timeseries
     demand_time = timeseries_of_component(
-                energysystem, ebus, "('demand', '"+reg+"', 'elec')")
-                
-    res = pd.DataFrame(index=range(len(demand_time)), columns=['ee', 'pv', 'wind'])
+        energysystem, ebus, "('demand', '" + reg + "', 'elec')")
+    
+    # calculate shares
+    res = pd.DataFrame(index=range(len(demand_time)),
+                       columns=['ee', 'pv', 'wind'])
     for i in range(len(demand_time)):
         fee = demand_time[i] - pv_time[i] - wind_time[i]
         if fee < 0:
@@ -622,11 +617,12 @@ def get_share_ee(energysystem, reg, results_dc):
         else:
             res['ee'][i] = pv_time[i] + wind_time[i]
             res['pv'][i] = pv_time[i]
-            res['wind'][i] = wind_time[i]
-    
+            res['wind'][i] = wind_time[i]   
     ee_share = sum(res['ee']) / sum(demand_time)
     pv_share = sum(res['pv']) / sum(demand_time)
     wind_share = sum(res['wind']) / sum(demand_time)
+    
+    # print shares and add to results_dc
     print('ee share:')
     print(ee_share)
     results_dc['ee share ' + reg] = ee_share
@@ -637,9 +633,13 @@ def get_share_ee(energysystem, reg, results_dc):
     print(wind_share)    
     results_dc['wind share ' + reg] = wind_share
 
-    return(results_dc)
+    return results_dc
 
 def co2(energysystem):
+    """
+    Calculate total CO2 emissions.
+    """
+    # retrieve specific CO2 emissions from database
     conn_oedb = db.connection(section='open_edb')
     (co2_emissions, co2_fix, eta_elec, eta_th, eta_th_chp, eta_el_chp,
      eta_chp_flex_el, sigma_chp, beta_chp, opex_var, opex_fix, capex,
@@ -681,102 +681,120 @@ def co2(energysystem):
     return co2
 
 
-def get_supply_demand_timeseries(energysystem):
-    time_index = pd.date_range('1/1/{0}'.format(2010), periods=8760, freq='H')
-    supply_demand_time = pd.DataFrame(index=time_index)
-    for regio in energysystem.regions:
-        reg = regio.name
-        all_times_out = pd.DataFrame(index=time_index)
-        all_times_in = pd.DataFrame(index=time_index)
-    
-        elec_bus = energysystem.results[[obj for obj in energysystem.entities
-            if obj.uid == ("('bus', '"+reg+"', 'elec')")][0]]
-        e_bus = [obj for obj in energysystem.entities
-            if obj.uid == ("('bus', '"+reg+"', 'elec')")][0]
+def get_supply_demand_timeseries(energysystem, year, path):
+    """
+    Writes timeseries of all inputs and outputs of the electricity bus of
+    each region as well as their sums to dataframe and saves to csv.
+    """
+    time_index = pd.date_range('1/1/{0}'.format(year), periods=8760, freq='H')
+    # create dataframe for timeseries sums of outputs and inputs of electricity
+    # bus
+    supply_demand_sum = pd.DataFrame(index=time_index)
+    for region in energysystem.regions:
+        reg = region.name
+        # create dataframe for timeseries of outputs and inputs of electricity
+        # bus
+        elec_out = pd.DataFrame(index=time_index) 
+        elec_in = pd.DataFrame(index=time_index) 
+        # get electricity bus entity and its results
+        elec_bus = [obj for obj in energysystem.entities
+            if obj.uid == ("('bus', '" + reg + "', 'elec')")][0]
+        elec_bus_results = energysystem.results[[obj for obj in 
+            energysystem.entities
+            if obj.uid == ("('bus', '" + reg + "', 'elec')")][0]]
+        # get outputs of electricity bus
         for obj in energysystem.entities:
             if 'demand' in obj.uid or 'hp' in obj.uid:        
                 try:
-                    all_times_out[obj.uid] = elec_bus[[obj][0]]
+                    elec_out[obj.uid] = elec_bus_results[[obj][0]]
                 except:
                     pass
+        # get inputs of electricity bus
         for obj in energysystem.entities:
-            if 'transformer' in obj.uid or 'transport' in obj.uid or 'FixedSrc' in obj.uid:
+            if ('transformer' in obj.uid or 'transport' in obj.uid or
+                'FixedSrc' in obj.uid):
                 obj_in = energysystem.results[[obj][0]]
                 try:
-                    all_times_in[obj.uid] = obj_in[[e_bus][0]]
+                    elec_in[obj.uid] = obj_in[[elec_bus][0]]
                 except:
-                    pass
-        time_in_sum = all_times_in.sum(axis=1)
-        time_out_sum = all_times_out.sum(axis=1)    
+                    pass   
 
-        all_times_in.to_csv(path+reg+'_all_times_in.csv')
-        all_times_out.to_csv(path+reg+'_all_times_out.csv')
+        # save to csv
+        elec_in.to_csv(path + reg + '_all_times_in.csv')
+        elec_out.to_csv(path + reg + '_all_times_out.csv')
+        # get residual as well as sum of all inputs and all outputs
+        supply_demand_sum[reg] = elec_in.sum(axis=1) - elec_out.sum(axis=1)   
+        supply_demand_sum[reg + 'in'] = elec_in.sum(axis=1)
+        supply_demand_sum[reg + 'out'] = elec_out.sum(axis=1)   
+    # save to csv 
+    supply_demand_sum.to_csv(path + 'supply_minus_demand.csv')
+        
+    return supply_demand_sum 
     
-        supply_demand_time[reg] = time_in_sum - time_out_sum
-        supply_demand_time[reg+'in'] = time_in_sum
-        supply_demand_time[reg+'out'] = time_out_sum
 
-    return(supply_demand_time)
+if __name__ == "__main__":
+
+    # load results
+    path_to_dump = expanduser("~") + '/.oemof/dumps/'
+    year = 2010
+      # create dummy energy system
+    energysystem = create_es('cbc', [t for t in range(8760)], str(year))
+      # load dumped energy system
+    energysystem.restore(path_to_dump)
     
-
-################# get results ############################
-
-path = '/home/hendrik/UserShares/Elisa.Gaudchau/Oemof/dumps/Szenario_gruene2030_ohne_Braunkohle/'
-# load dumped energy system
-year = 2050
-energysystem = create_es(
-    'cbc', [t for t in range(8760)], str(year))
-energysystem.restore(path)
-
-buses = ('elec', 'dh')
-regions_BBB = ('HF', 'LS', 'UB', 'PO', 'BE', 'OS')
-
-#for week in ('spring', 'summer', 'autumn', 'winter'):
-
-date_from = {}
-date_to = {}
-date_from['spring'] = "2010-03-17 00:00:00"
-date_to['spring'] = "2010-03-24 00:00:00"
-date_from['summer'] = "2010-06-17 00:00:00"
-date_to['summer'] = "2010-06-24 00:00:00"
-date_from['autumn'] = "2010-09-17 00:00:00"
-date_to['autumn'] = "2010-09-24 00:00:00"
-date_from['winter'] = "2010-12-17 00:00:00"
-date_to['winter'] = "2010-12-24 00:00:00"
-
-#results_dc = {}
-#results_dc['co2_all_BB'] = co2(energysystem)
-#
-#
-#supply_demand_time = get_supply_demand_timeseries(energysystem)
-#supply_demand_time.to_csv(path+'supply_minus_demand.csv')
-#
-#print_exports(energysystem, results_dc)
-#
-#print_im_exports(energysystem, results_dc)
-#frame_base = pd.DataFrame()
-for reg in regions_BBB:
-    week = 'winter' 
-    for bus in buses:      
-        fig = stack_plot(energysystem, reg, bus, date_from[week], date_to[week])
-        fig.savefig(path+reg+'_'+bus+'_'+week+'.png')
-
-#    results_dc, frame = print_validation_outputs(energysystem, reg, results_dc)
-#    frame_base = frame_base.append(frame)       
-#    get_share_ee(energysystem, reg, results_dc)
-#
-#frame_base.to_csv(path+'co2_el_energy.csv')
-#
-#x = list(results_dc.keys())
-#y = list(results_dc.values())
-#f = open(path + '_results.csv', 'w', newline='')
-#w = csv.writer(f, delimiter=';')
-#w.writerow(x)
-#w.writerow(y)
-#f.close
-#
-#f = open(path + '_results.csv', 'w', newline='')
-#w = csv.writer(f, delimiter=';')
-#w.writerow(x)
-#w.writerow(y)
-#f.close
+    # weeks for stack plot
+    date_from = {}
+    date_to = {}
+    date_from['spring'] = "2010-03-17 00:00:00"
+    date_to['spring'] = "2010-03-24 00:00:00"
+    date_from['summer'] = "2010-06-17 00:00:00"
+    date_to['summer'] = "2010-06-24 00:00:00"
+    date_from['autumn'] = "2010-09-17 00:00:00"
+    date_to['autumn'] = "2010-09-24 00:00:00"
+    date_from['winter'] = "2010-12-17 00:00:00"
+    date_to['winter'] = "2010-12-24 00:00:00"
+    
+    # empty results_dc dictionary to write results into
+    results_dc = {}
+    
+    # get all inputs and outputs of electricity bus of each region
+    get_supply_demand_timeseries(energysystem, year, path_to_dump)
+    # get exports from Brandenburg to neighbor regions and imports from  
+    # neighbor regions to Brandenburg
+    print_exports(energysystem, results_dc, year, path_to_dump) ##
+    # add flows between regions in Brandenburg and between Brandenburg and
+    # Berlin to results_dc
+    print_im_exports(energysystem, results_dc, year, path_to_dump)
+    # calculates total CO2 emissions
+    results_dc['co2_all_BB'] = co2(energysystem)
+    
+    
+    transformer_results_df = pd.DataFrame()
+    for reg in ('HF', 'LS', 'UB', 'PO', 'BE', 'OS'):
+        # create stack plots for electricity bus and district heating bus for
+        # winter week
+        week = 'winter' 
+        for bus in ('elec', 'dh'):      
+            fig = stack_plot(
+                energysystem, reg, bus, date_from[week], date_to[week])
+            fig.savefig(path_to_dump + reg + '_' + bus + '_' + week + '.png')
+        # add sums and maximums of flows as well as full load hours of
+        # transformers
+        # return value frame is a dataframe with power output of each 
+        # transformer, electrical efficiency and CO2 per MWh
+        results_dc, frame = print_validation_outputs(
+            energysystem, reg, results_dc)
+        transformer_results_df = transformer_results_df.append(frame)     
+        # get shares of wind and pv of demand fulfillment
+        get_share_ee(energysystem, reg, results_dc)
+    
+    # write to csv
+    transformer_results_df.to_csv(path_to_dump + 'co2_el_energy.csv')
+    
+    keys = list(results_dc.keys())
+    values = list(results_dc.values())
+    f = open(path_to_dump + '_results.csv', 'w', newline='')
+    w = csv.writer(f, delimiter=';')
+    w.writerow(keys)
+    w.writerow(values)
+    f.close

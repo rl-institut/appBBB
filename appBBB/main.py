@@ -20,7 +20,7 @@ import helper_dec_BBB as hlsd
 
 
 ################################# CHOOSE SCENARIO ############################                                                         
-scenario = 'ES2030' #TODO Welche anderen Szenarien können gewählt werden?
+scenario = 'ES2030'
 ##############################################################################
 
 ################################# BASIC SETTINGS #############################
