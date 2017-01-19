@@ -127,7 +127,9 @@ def get_transmission(conn_oedb, scenario_name):
 
 
 def get_demand(conn_oedb, scenario_name):
-    'heat and electrical demands in BBB regions'
+    """
+    Get heating and electrical demands in BBB regions.
+    """
 
     sql = """
         SELECT region, sector, type, demand
@@ -464,7 +466,9 @@ def get_out_max_chp_flex(capacity, sigma_chp):
 
 
 def get_constraint_values(conn_oedb, scenario_name):
-    'values for constraints in scenario'
+    """
+    Get values for additional constraints.
+    """
 
     sql = """
         SELECT constr, val
@@ -478,7 +482,9 @@ def get_constraint_values(conn_oedb, scenario_name):
     
 
 def get_emob_values(conn_oedb, scenario_name):
-    'values for constraints in scenario'
+    """
+    Get normalized timeseries for battery electric vehicles.
+    """
 
     sql = """
         SELECT region, energy
@@ -492,7 +498,9 @@ def get_emob_values(conn_oedb, scenario_name):
 
 
 def get_bdew_heatprofile_parameters():
-    #TODO Werte recherchieren
+    """
+    Get parameters for heat load profiles.
+    """
     bdew_heatprofile_parameters = pd.DataFrame(
         [{'share_EFH': 0.5, 'wind_class': 1, 'building_class': 1},
             {'share_EFH': 0.5, 'wind_class': 1, 'building_class': 1},
@@ -505,16 +513,15 @@ def get_bdew_heatprofile_parameters():
 
 
 def get_hp_parameters():
-    # share_hp_new_building und share_fbh_old_building können evtl auch
-    # angepasst werden für ausbauszenarien (JAZ im Auge behalten)
-
+    """
+    Get heat pump parameters.
+    """
     # share of single family houses of all residential buildings that have a
     # heat pump (share_mfh_hp = 1 - share_sfh_hp)
     share_sfh_hp = 0.5
     share_ww = 0  # share of warm water of total heating demand
     # share of air hp of all heat pumps (share_brine_hp = 1 - share_air_hp)
-    share_air_hp = 0.6  # Anm.: Sole-WP hauptsächlich in Neubauten, sodass
-                        # Anteil von Luft-WP bei Sanierungsszenarien steigt
+    share_air_hp = 0.6
     share_heating_rod = 0.42  # share of heating rod in monoenergetic hp
                               # system
     share_heat_storage = 0.85  # share of hp systems with heat storage
@@ -523,7 +530,9 @@ def get_hp_parameters():
 
 
 def el_load_profiles(demand, ann_el_demand_per_sector, year, **kwargs):
-
+    """
+    Generates an electrical load profile using the oemof demandlib.
+    """
     # read standard load profiles
     e_slp = bdew.ElecSlp(year, holidays=kwargs.get('holidays', None))
     
@@ -549,7 +558,7 @@ def el_load_profiles(demand, ann_el_demand_per_sector, year, **kwargs):
 
 def call_heat_demandlib(region, time_index, **kwargs):
     '''
-    Calls the demandlib and creates an object which includes the demand
+    Calls the demandlib and creates an object that includes the demand
     timeseries.
 
     Required Parameters
@@ -572,6 +581,9 @@ def call_heat_demandlib(region, time_index, **kwargs):
 
 
 def ind_profile_parameters():
+    """
+    Get parameters for industrial load profiles.
+    """
     am = settime(7, 0, 0)
     pm = settime(20, 00, 0)
     profile_factors = {'week': {'day': 0.8, 'night': 0.6},
@@ -706,18 +718,18 @@ def add_constraint_co2_emissions(om, co2_emissions, constraints):
 
 
 def add_constraint_entities_BE(om):
-    # Primärenergieverbrauch
+    # primary energy demand
     transformer_uids = {
-        # Heizwerke
+        # heating plants
         "('heat_transformer', 'BE', 'oil')": 346000,
         "('heat_transformer', 'BE', 'natural_gas')": 918000,
         "('heat_transformer', 'BE', 'biomass')": 113000,
-        # Kraftwerke
+        # power plants
         "('transformer', 'BE', 'oil')": 71000,
         "('transformer', 'BE', 'natural_gas')": 2939000,
         "('transformer', 'BE', 'biomass')": 932000,
         "('transformer', 'BE', 'powertoheat')": 1005000,
-        # Heizkraftwerke KWK
+        # CHP
         "('transformer', 'BE', 'oil', 'SEchp')": 621000,
         "('transformer', 'BE', 'natural_gas_cc', 'SEchp')": 23713000,
         "('transformer', 'BE', 'biomass', 'SEchp')": 425000
